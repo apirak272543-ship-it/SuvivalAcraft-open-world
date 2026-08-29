@@ -569,6 +569,7 @@ function loop(ts: number): void {
   requestAnimationFrame(loop);
   if (!running) return;
   if (paused) return;
+  if (window.innerHeight > window.innerWidth) return; // portrait -> rotate-screen shown by CSS
   const dt = Math.min(0.05, (ts - lastTs) / 1000);
   lastTs = ts;
   update(dt);

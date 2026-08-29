@@ -64,9 +64,24 @@
       #menu-btn { position: absolute; top: calc(max(8px,env(safe-area-inset-top)) + 4px); right: 10px; width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(255,255,255,.3); background: rgba(10,16,30,.8); color: #fff; font-size: 18px; z-index: 6; }
       #overlay { position: absolute; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.6); }
       #overlay.visible { display: flex; }
+
+      /* ---- LANDSCAPE LOCK ---- */
+      #rotate-screen { position: fixed; inset: 0; z-index: 999; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #0b0f1a; color: #ecf0ff; padding: 24px; }
+      #rotate-screen .rot-icon { font-size: 64px; margin-bottom: 14px; animation: rot-pulse 1.2s ease-in-out infinite; }
+      @keyframes rot-pulse { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(90deg); } }
+      #rotate-screen h2 { font-size: 20px; margin: 0 0 8px; }
+      #rotate-screen p { color: #9fb0d8; font-size: 14px; margin: 0; }
+      @media (orientation: portrait) {
+        #app, #hud.playing { display: none !important; }
+        #rotate-screen { display: flex; }
+      }
+      @media (orientation: landscape) {
+        #rotate-screen { display: none !important; }
+      }
     </style>
   </head>
   <body>
+    <div id="rotate-screen"><div class="rot-icon">📱↻</div><h2>หมุนจอเป็นแนวนอน</h2><p>เกมนี้เล่นแนวนอนเท่านั้น<br/>กรุณาหมุนโทรศัพท์ของคุณ</p><p style="margin-top:10px;font-size:12px;color:#7f8db0">Landscape Required</p></div>
     <div id="app">
       <canvas id="game" width="840" height="480"></canvas>
 
