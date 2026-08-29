@@ -1,0 +1,26 @@
+{
+  "tileSize": 16,
+  "cols": 8,
+  "rows": 3,
+  "tiles": {
+    "grass": 0,
+    "dirt": 1,
+    "sand": 2,
+    "stone": 3,
+    "cobblestone": 4,
+    "water": 5,
+    "wood_log": 6,
+    "wood_planks": 7,
+    "leaves": 8,
+    "iron_ore": 9,
+    "coal_ore": 10,
+    "fence": 11,
+    "wall": 12,
+    "door": 13,
+    "torch": 14,
+    "wheat_crop_0": 15,
+    "wheat_crop_1": 16,
+    "wheat_crop_2": 17,
+    "glass": 18
+  }
+}
