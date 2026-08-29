@@ -1,407 +1,670 @@
-import { generateChunk } from "../../game/src/procedural/terrain.js";
-import { Chunk } from "../../game/src/world/chunk.js";
-import { World } from "../../game/src/world/world.js";
-import { Inventory } from "../../game/src/inventory/inventory.js";
-import { craft, canCraft, listRecipes } from "../../game/src/crafting/crafting.js";
-import { attackEnemy } from "../../game/src/combat/combat.js";
-import { Enemy } from "../../game/src/enemies/enemy.js";
-import { BIOMES } from "../../shared/registries/biomes.js";
-import { BLOCKS } from "../../shared/registries/blocks.js";
-import { ITEMS } from "../../shared/registries/items.js";
-import { createStats, addXp, eat } from "../../game/src/player/stats.js";
-import { applySurvivalTick, isStarving } from "../../game/src/survival/survival.js";
-import { Farm } from "../../game/src/farming/farming.js";
-import { Rng } from "../../game/src/core/rng.js";
-import type { GameEvent } from "../../shared/contracts/events.js";
-import type { StatBlock } from "../../shared/types/state.js";
-import { createDayNight, tickDayNight, phaseLabel } from "../../game/src/world/daynight.js";
-import { createWeather, tickWeather, weatherLabel } from "../../game/src/world/weather.js";
-import { Creature } from "../../game/src/ai/creature.js";
-import { ENEMIES } from "../../shared/registries/enemies.js";
+// SuvivalAcraft Open World — main game wiring (mobile-first, touch-first)
+import { World, TILE_SIZE, T_WATER, T_STONE, T_ROCK, T_TREE, T_BUSH, T_BERRY, T_GRASS, T_GRASS_ALT, T_DIRT, T_SAND, T_FLOOR, T_PATH, tileName } from "./world.js";
+import {
+  PlayerState, newPlayer, addItem, removeItem, countItems, canCraft, craftRecipe,
+  useItem, equippedDamage, survivalTick, addXp, saveGame, loadGame, hasSave, xpNeed,
+  ITEMS, RECIPES, Slot,
+} from "./state.js";
+import { TouchJoystick, KeyboardInput, setupButton } from "./controls.js";
 
-// --- Canvas / DOM ---
-const canvas = document.getElementById("game") as HTMLCanvasElement;
+// ---------- DOM ----------
+const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
+const canvas = $<HTMLCanvasElement>("game");
 const ctx = canvas.getContext("2d")!;
+const hud = $("hud");
+const overlay = $("overlay");
+const topBar = $("top-bar");
+const msgEl = $("msg");
 
-// --- Sprite atlas (CC0-style placeholder: assets/tiles/atlas.png) ---
-const atlasImg = new Image();
-let atlas: HTMLImageElement | null = null;
-let atlasTiles: Record<string, number> = {};
-const ATLAS_TILE = 16;
-atlasImg.onload = () => { atlas = atlasImg; };
-atlasImg.src = "/tiles/atlas.png";
-fetch("/tiles/index.json")
-  .then((r) => r.json())
-  .then((d: { tiles: Record<string, number> }) => { atlasTiles = d.tiles; })
-  .catch(() => {});
-const hotbarEl = document.getElementById("hotbar")!;
-const panelEl = document.getElementById("panel")!;
-const msgEl = document.getElementById("msg")!;
-const startEl = document.getElementById("start")!;
-const btnStart = document.getElementById("btn-start") as HTMLButtonElement;
-const nameInput = document.getElementById("name") as HTMLInputElement;
-const worldSelect = document.getElementById("world") as HTMLSelectElement;
-
-// --- World presets ---
-const PRESETS = [1337, 4242, 9001, 2026];
-function seedOptions(): void {
-  worldSelect.innerHTML = "";
-  for (const s of PRESETS) {
-    const o = document.createElement("option");
-    o.value = String(s);
-    o.textContent = `โลก seed ${s}`;
-    worldSelect.appendChild(o);
-  }
-}
-seedOptions();
-
-// --- State ---
+// ---------- State ----------
+let player: PlayerState;
 let world: World;
-let inv: Inventory;
-let stats: StatBlock;
-let farm = new Farm();
-let player = { x: 8 * 16 + 8, y: 8 * 16 + 8, px: 0, py: 0 };
-let enemies: Enemy[] = [];
-const rng = new Rng(Date.now() >> 3);
-let camera = { x: 0, y: 0 };
-let gameTime = 0;
-let lastTick = 0;
-let msg = "";
-let msgT = 0;
-let selectedSlot = 0;
+let gameSeed = 0;
+let time = 6; // game-hour (6 = dawn)
+const DAY_LEN = 240; // seconds per full day
+let dayCount = 1;
+
+let camX = 0, camY = 0;
 let running = false;
-const TILE = 24;
-let dn = createDayNight(300, 0.45);
-let weather = createWeather("clear", 0, 25);
-let creatures: Creature[] = [];
-const ENEMY_IDS = Object.keys(ENEMIES);
+let lastTs = 0;
+let msgTimer = 0;
+let paused = false;
+let selectedSlot = -1;
+let dodgeUntil = 0;
+let attackCooldown = 0;
 
-function makeWorld(seed: number): World {
-  const w = new World({ seed, chunkSize: 16, radiusChunks: 0, dayLengthSeconds: 1200, spawn: { x: 0, y: 0 }, rules: { friendlyFire: false, keepInventoryOnDeath: true, hungerEnabled: true, thirstEnabled: true, mobSpawning: true } });
-  return w;
-}
+interface Enemy { x: number; y: number; hp: number; maxHp: number; dmg: number; kind: string; aggro: boolean; }
+let enemies: Enemy[] = [];
+let spawnTimer = 0;
 
-function ensureChunks(w: World): void {
-  const size = w.settings.chunkSize;
-  const pcx = Math.floor(player.x / size);
-  const pcz = Math.floor(player.y / size);
-  for (let dz = -5; dz <= 5; dz++) {
-    for (let dx = -5; dx <= 5; dx++) {
-      const cx = pcx + dx;
-      const cz = pcz + dz;
-      if (!w.hasChunk(cx, cz)) {
-        const c = new Chunk({ cx, cz }, size);
-        generateChunk(c, w.settings.seed);
-        w.setChunk(c);
-      }
-    }
-  }
-}
+// ---------- Minimap ----------
+let minimapCv: HTMLCanvasElement | null = null;
+let minimapCtx: CanvasRenderingContext2D | null = null;
 
-function spawnEnemies(w: World): void {
-  enemies = [];
-  creatures = [];
-  const size = w.settings.chunkSize;
-  for (let i = 0; i < 8; i++) {
-    const eid = ENEMY_IDS[i % ENEMY_IDS.length]!;
-    const x = Math.floor(player.x / size) * size + rng.int(-16, 16);
-    const y = Math.floor(player.y / size) * size + rng.int(-16, 16);
-    const c = new Creature(eid, { x, y });
-    creatures.push(c);
-  }
-}
-
-// --- Rendering ---
-function draw(): void {
-  const w = canvas.width / TILE;
-  const h = canvas.height / TILE;
-  ctx.fillStyle = "#0b0f1a";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  const camCX = Math.round(camera.x);
-  const camCY = Math.round(camera.y);
-  for (let ty = camCY - h; ty <= camCY + h; ty++) {
-    for (let tx = camCX - w; tx <= camCX + w; tx++) {
-      const block = world.blockAt(tx, ty);
-      if (block === "air") continue;
-      const sx = (tx - camCX) * TILE + canvas.width / 2;
-      const sy = (ty - camCY) * TILE + canvas.height / 2;
-      // draw from sprite atlas when available, else solid color
-      const idx = atlasTiles[block];
-      if (atlas && idx !== undefined) {
-        const col = idx % 8;
-        const row = Math.floor(idx / 8);
-        ctx.drawImage(atlas, col * ATLAS_TILE, row * ATLAS_TILE, ATLAS_TILE, ATLAS_TILE,
-          Math.round(sx), Math.round(sy), TILE, TILE);
-      } else {
-        ctx.fillStyle = colorForFallback(block);
-        ctx.fillRect(Math.round(sx), Math.round(sy), TILE, TILE);
-      }
-    }
-  }
-
-  // creatures (AI)
-  for (const e of creatures) {
-    const sx = (e.pos.x - camCX) * TILE + canvas.width / 2;
-    const sy = (e.pos.y - camCY) * TILE + canvas.height / 2;
-    ctx.fillStyle = "#e0f0ff";
-    ctx.beginPath();
-    ctx.arc(sx + TILE / 2, sy + TILE / 2, TILE / 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#3949ab";
-    ctx.font = "10px sans-serif";
-    ctx.fillText(e.name.slice(0, 6), sx, sy + TILE + 6);
-  }
-
-  // player
-  const psx = (player.x - camCX) * TILE + canvas.width / 2;
-  const psy = (player.y - camCY) * TILE + canvas.height / 2;
-  ctx.fillStyle = "#ffb74d";
-  ctx.fillRect(psx + 4, psy + 4, TILE - 8, TILE - 8);
-  ctx.fillStyle = "#5d4037";
-  ctx.fillRect(psx + 9, psy - 2, 6, 6);
-
-  // selected tile highlight
-  const mx = camCX + Math.floor((mouse.x - canvas.width / 2) / TILE);
-  const my = camCY + Math.floor((mouse.y - canvas.height / 2) / TILE);
-  ctx.strokeStyle = "rgba(255,255,255,0.7)";
-  ctx.lineWidth = 2;
-  ctx.strokeRect((mx - camCX) * TILE + canvas.width / 2, (my - camCY) * TILE + canvas.height / 2, TILE, TILE);
-}
-
-function colorForFallback(block: string): string {
-  switch (block) {
-    case "grass": return "#7cb342";
-    case "dirt": return "#795548";
-    case "sand": return "#f2e2a4";
-    case "stone": return "#9e9e9e";
-    case "cobblestone": case "cobblestone_block": return "#8d8d8d";
-    case "iron_ore": return "#d7ccc8";
-    case "coal_ore": return "#616161";
-    case "wood_log": return "#6d4c41";
-    case "wood_planks": return "#a1887f";
-    case "leaves": return "#66bb6a";
-    case "water": return "#42a5f5";
-    case "glass": return "rgba(200,220,255,0.4)";
-    case "torch": return "#ffca28";
-    case "wheat_crop_0": return "#c5e1a5";
-    case "wheat_crop_1": return "#aed581";
-    case "wheat_crop_2": return "#8d6e63";
-    default: return "#555";
-  }
-}
-
-// --- Input ---
-const keys = new Set<string>();
-const mouse = { x: 0, y: 0 };
-addEventListener("keydown", (ev) => {
-  keys.add(ev.key.toLowerCase());
-  if (ev.key >= "1" && ev.key <= "9") {
-    const i = Number(ev.key) - 1;
-    if (i < inv.size) selectedSlot = i;
-  }
-});
-addEventListener("keyup", (ev) => keys.delete(ev.key.toLowerCase()));
-canvas.addEventListener("mousemove", (ev) => {
-  const r = canvas.getBoundingClientRect();
-  mouse.x = (ev.clientX - r.left) * (canvas.width / r.width);
-  mouse.y = (ev.clientY - r.top) * (canvas.height / r.height);
-});
-canvas.addEventListener("click", () => {
-  const tx = camera.x + Math.floor((mouse.x - canvas.width / 2) / TILE);
-  const ty = camera.y + Math.floor((mouse.y - canvas.height / 2) / TILE);
-  const tool = inv.get(selectedSlot);
-  const isPlaceable = !!tool && !!BLOCKS[tool.item]?.solid;
-  const current = world.blockAt(tx, ty);
-  if (isPlaceable && tool && current === "air") {
-    world.setBlock(tx, ty, tool.item);
-    inv.remove(tool.item, 1);
-    updateHUD();
-  } else if (current !== "air" && current !== "water") {
-    const blockDef = BLOCKS[current];
-    const toolType = tool?.item?.includes("pickaxe") ? "pickaxe" : tool?.item?.includes("axe") ? "axe" : undefined;
-    const level = toolType && tool ? (tool.item.includes("iron") ? 3 : tool.item.includes("stone") ? 2 : 1) : 0;
-    if (!blockDef?.tool || (toolType && blockDef.tool.type === toolType)) {
-      const drops = rollDrops(current, toolType, level);
-      for (const d of drops) inv.add(d.item, d.count);
-      world.setBlock(tx, ty, "air");
-      updateHUD();
-      setMsg(`ขุดได้: ${drops.map((d) => ITEMS[d.item]?.name ?? d.item).join(", ") || "ไม่มีอะไร"}`);
-      bumpQuests("gather", drops);
-    } else {
-      setMsg("ต้องใช้เครื่องมือที่ใช่ในการขุด");
-    }
-  }
-});
-
-function rollDrops(block: string, toolType?: string, level = 0): { item: string; count: number }[] {
-  const def = BLOCKS[block];
-  if (!def?.drops) return [];
-  const out: { item: string; count: number }[] = [];
-  for (const d of def.drops) {
-    const count = rng.int(d.min, d.max);
-    if (count > 0) out.push({ item: d.item, count });
-  }
-  return out;
-}
-
-function bumpQuests(kind: string, drops: { item: string; count: number }[]): void {
-  for (const d of drops) {
-    const q = playerQuests.find((p) => {
-      const def = QUEST_DEFS[p.questId];
-      return def?.objective.type === "gather" && def.objective.target === d.item;
-    });
-    if (q && !q.complete) {
-      q.progress = Math.min(q.progress + d.count, 99);
-      if (q.progress >= 99) q.complete = true;
-    }
-  }
-}
-
-// --- Quest state (lightweight inline) ---
-const QUEST_DEFS: Record<string, { id: string; name: string; objective: { type: string; target: string; count: number } }> = {
-  gather_wood: { id: "gather_wood", name: "เก็บไม้ 5", objective: { type: "gather", target: "wood", count: 5 } },
-  kill_slime: { id: "kill_slime", name: "ล่าสไลม์ 3", objective: { type: "kill", target: "slime", count: 3 } },
-};
-let playerQuests = [
-  { questId: "gather_wood", progress: 0, complete: false },
-  { questId: "kill_slime", progress: 0, complete: false },
+// ---------- Quest tracker ----------
+interface Quest { id: string; name: string; desc: string; target: number; progress: number; done: boolean; }
+let quests: Quest[] = [
+  { id: "gather_wood", name: "เก็บไม้", desc: "เก็บไม้ 5", target: 5, progress: 0, done: false },
+  { id: "kill_slime", name: "ปราบศัตรู", desc: "กำจัดศัตรู 2", target: 2, progress: 0, done: false },
 ];
+let questEl: HTMLElement | null = null;
 
-// --- Update loop ---
-function update(dt: number): void {
-  const speed = 6;
-  let dx = 0, dy = 0;
-  if (keys.has("w")) dy -= 1;
-  if (keys.has("s")) dy += 1;
-  if (keys.has("a")) dx -= 1;
-  if (keys.has("d")) dx += 1;
-  if (dx || dy) {
-    const len = Math.hypot(dx, dy);
-    player.x += (dx / len) * speed * dt;
-    player.y += (dy / len) * speed * dt;
-    ensureChunks(world);
-  }
+// ---------- Crafting ----------
+let craftOpen = false;
+let craftEl: HTMLElement | null = null;
 
-  // survival
-  const surv = applySurvivalTick(stats, dt);
-  if (surv.drained) setMsg("⚠️ ความหิว/กระหายหมด — HP ลด!");
 
-  // day/night + weather
-  tickDayNight(dn, dt);
-  const biomeStats = { humidity: 0.5, temperature: 0.6 };
-  tickWeather(weather, dt, biomeStats, () => rng.next());
+// ============================================================
+//  BOOTSTRAP UI (minimap / quest / crafting injected into DOM)
+// ============================================================
+function buildDynamicUI(): void {
+  // Minimap (top-right, under top bar on right side)
+  minimapCv = document.createElement("canvas");
+  minimapCv.width = 120;
+  minimapCv.height = 120;
+  minimapCv.style.cssText = "position:absolute;top:calc(max(8px,env(safe-area-inset-top)) + 52px);right:12px;width:96px;height:96px;border:1px solid rgba(255,255,255,.25);border-radius:10px;background:#0a101e;pointer-events:none;z-index:6;";
+  hud.appendChild(minimapCv);
+  minimapCtx = minimapCv.getContext("2d");
+  const miniLabel = document.createElement("div");
+  miniLabel.textContent = "🗺";
+  miniLabel.style.cssText = "position:absolute;top:calc(max(8px,env(safe-area-inset-top)) + 50px);right:112px;font-size:14px;pointer-events:none;z-index:6;";
+  hud.appendChild(miniLabel);
 
-  // creature AI + combat
-  for (const c of creatures) {
-    const r = c.step({ x: player.x, y: player.y }, dt, (x, y) => world.blockAt(x, y) !== "stone" && world.blockAt(x, y) !== "wall", () => rng.next());
-    if (r.wantsAttack && Math.hypot(c.pos.x - player.x, c.pos.y - player.y) < c.attackRange + 0.5) {
-      stats.hp = Math.max(0, stats.hp - c.damage);
-      if (stats.hp <= 0) setMsg("💀 คุณตาย! ลองใหม่");
-    }
-  }
-  creatures = creatures.filter((c) => c.isAlive());
+  // Quest tracker (top-center-left)
+  questEl = document.createElement("div");
+  questEl.style.cssText = "position:absolute;top:calc(max(8px,env(safe-area-inset-top)) + 48px);left:12px;max-width:240px;pointer-events:none;z-index:6;display:flex;flex-direction:column;gap:4px;";
+  hud.appendChild(questEl);
 
-  gameTime += dt;
+  // Crafting button + panel (separate, on HUD right side above quick bar)
+  const craftBtn = document.createElement("button");
+  craftBtn.id = "btn-craft";
+  craftBtn.textContent = "🔨 คราฟต์";
+  craftBtn.style.cssText = "position:absolute;right:10px;bottom:110px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.3);background:rgba(10,16,30,.8);color:#fff;font-size:13px;font-weight:700;z-index:6;";
+  craftBtn.addEventListener("click", () => { craftOpen = !craftOpen; if (craftOpen) renderCraft(); else if (craftEl) craftEl.style.display = "none"; });
+  hud.appendChild(craftBtn);
+
+  craftEl = document.createElement("div");
+  craftEl.id = "craft-panel";
+  craftEl.style.cssText = "position:absolute;right:10px;bottom:150px;width:210px;max-height:46%;overflow:auto;background:rgba(10,16,30,.96);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:10px;z-index:7;display:none;";
+  hud.appendChild(craftEl);
 }
 
-// --- HUD ---
-function el(id: string): HTMLElement { return document.getElementById(id)!; }
-function updateHUD(): void {
-  el("hud-pos").textContent = `${Math.floor(player.x)},${Math.floor(player.y)} · ${phaseLabel(dn.phase)} ${Math.round(dn.light * 100)}%`;
-  el("hud-pos").textContent += ` · ${weatherLabel(weather.kind)}`;
-  el("hud-level").textContent = `Lv ${stats.level}`;
-  el("hud-xp").textContent = `${Math.round(stats.xp)} XP`;
-  el("bar-hp").style.width = `${(stats.hp / stats.maxHp) * 100}%`;
-  el("bar-hunger").style.width = `${(stats.hunger / stats.maxHunger) * 100}%`;
-  el("bar-thirst").style.width = `${(stats.thirst / stats.maxThirst) * 100}%`;
-  renderHotbar();
-  renderPanel();
-  renderQuests();
-}
-
-function renderHotbar(): void {
-  hotbarEl.innerHTML = "";
-  for (let i = 0; i < Math.min(inv.size, 9); i++) {
-    const s = document.createElement("div");
-    s.className = "slot" + (i === selectedSlot ? " active" : "");
-    const item = inv.get(i);
-    s.innerHTML = item ? `${item.item.split("_").join(" ")}<br/>x${item.count}` : "&nbsp;";
-    hotbarEl.appendChild(s);
+function renderCraft(): void {
+  if (!craftEl) return;
+  let html = "<div style='font-weight:700;margin-bottom:6px;color:#8fb0ff'>🔨 คราฟต์</div>";
+  for (const r of RECIPES) {
+    const ok = canCraft(r, player);
+    const need = r.needs.map((n) => `${ITEMS[n.item]?.icon ?? ""} ${countItems(player, n.item)}/${n.count}`).join(" · ");
+    html += `<div style="padding:6px;border:1px solid ${ok ? "rgba(143,176,255,.6)" : "rgba(255,255,255,.12)"};border-radius:8px;margin-bottom:6px;background:${ok ? "rgba(143,176,255,.14)" : "transparent"};opacity:${ok ? "1" : ".6"}">
+      <div style="font-size:14px;display:flex;justify-content:space-between;align-items:center">
+        <span>${r.icon} ${r.name}</span>
+        <button data-craft="${r.id}" style="border:0;border-radius:6px;padding:4px 8px;background:${ok ? "#577cff" : "#2a3450"};color:${ok ? "#06101f" : "#8b93ad"};font-weight:700" ${ok ? "" : "disabled"}>คราฟต์</button>
+      </div>
+      <div style="font-size:11px;color:#9fb0d8">${need}</div>
+    </div>`;
   }
-}
-
-function renderPanel(): void {
-  panelEl.innerHTML = "<h3>🧰 คราฟต์ (C)</h3>";
-  const recipes = listRecipes("crafting_table");
-  for (const r of recipes) {
-    const need = canCraft(inv, r.id, "crafting_table");
-    const b = document.createElement("button");
-    b.textContent = `${r.name} (${r.result.item})`;
-    b.disabled = !need.ok;
+  craftEl.innerHTML = html;
+  craftEl.querySelectorAll<HTMLButtonElement>("[data-craft]").forEach((b) => {
     b.addEventListener("click", () => {
-      const res = craft(inv, r.id, "crafting_table");
-      if (res.ok) {
-        setMsg(`ประดิษฐ์ ${r.result!.item} สำเร็จ`);
-        bumpQuests("craft", [{ item: r.result!.item, count: r.result!.count }]);
-        updateHUD();
+      const r = RECIPES.find((x) => x.id === b.dataset.craft);
+      if (r && craftRecipe(r, player)) {
+        notify(`CRAFTED: ${r.icon} ${r.name}`, "#aaf0c2");
+        renderHud();
+        renderCraft();
       } else {
-        setMsg(res.reason ?? "คราฟต์ไม่ได้");
+        notify("วัตถุดิบไม่พอ", "#ff8a80");
       }
     });
-    panelEl.appendChild(b);
-  }
+  });
 }
 
 function renderQuests(): void {
-  let s = "<h3>📜 ภารกิจ</h3>";
-  for (const q of playerQuests) {
-    const def = QUEST_DEFS[q.questId];
-    s += `<div style="font-size:12px;margin:2px 0">${def?.name} — ${q.complete ? "✅ เสร็จ" : `${q.progress}/${def?.objective.count}`}</div>`;
+  if (!questEl) return;
+  const active = quests.filter((q) => !q.done);
+  if (active.length === 0) {
+    questEl.innerHTML = "<div style='color:#fff;font-size:13px;background:rgba(10,16,30,.7);border-radius:8px;padding:4px 8px'>✅ ภารกิจสำเร็จทั้งหมด</div>";
+    return;
   }
-  panelEl.innerHTML += `<div style="margin-top:10px">${s}</div>`;
+  questEl.innerHTML = active.map((q) => {
+    const pct = Math.min(100, Math.round((q.progress / q.target) * 100));
+    return `<div style="background:rgba(10,16,30,.72);border-radius:8px;padding:5px 9px;font-size:12px;color:#ecf0ff;border:1px solid rgba(255,255,255,.12)">
+      <div><b>${q.name}</b></div>
+      <div style="color:#9fb0d8;font-size:11px">${q.desc} <span style="color:#aaf0c2">${q.progress}/${q.target}</span></div>
+      <div style="height:4px;background:#14203a;border-radius:2px;margin-top:3px"><div style="height:100%;width:${pct}%;background:#8fb0ff"></div></div>
+    </div>`;
+  }).join("");
 }
 
-function setMsg(text: string): void {
-  msg = text;
-  msgT = 2;
+// ============================================================
+//  SCREEN HELPERS
+// ============================================================
+function showScreen(id: string): void {
+  document.querySelectorAll<HTMLElement>(".screen").forEach((s) => s.classList.remove("visible"));
+  $(id)?.classList.add("visible");
+}
+function showHud(on: boolean): void {
+  hud.classList.toggle("playing", on);
+}
+function notify(text: string, color = "#aaf0c2"): void {
+  msgEl.textContent = text;
+  msgEl.style.color = color;
+  msgTimer = 2.4;
 }
 
-// --- Game start ---
-btnStart.addEventListener("click", () => {
-  const seed = Number(worldSelect.value);
-  world = makeWorld(seed);
-  ensureChunks(world);
-  spawnEnemies(world);
-  inv = new Inventory(27);
-  inv.add("wood_pickaxe", 1);
-  inv.add("wood_axe", 1);
-  inv.add("wood_sword", 1);
-  inv.add("wood", 10);
-  inv.add("apple", 5);
-  inv.add("torch", 8);
-  inv.add("stone", 4);
-  stats = createStats();
-  player = { x: 8 * 16 + 8, y: 8 * 16 + 8, px: 0, py: 0 };
-  camera = { x: player.x, y: player.y };
-  selectedSlot = 0;
+// ============================================================
+//  GAME SETUP
+// ============================================================
+function seedFrom(str: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+function startGame(p: PlayerState, seed: number, t: number): void {
+  player = p;
+  gameSeed = seed;
+  world = new World(seed);
+  time = t;
+  camX = p.pos.x;
+  camY = p.pos.y;
+  enemies = [];
+  spawnTimer = 1;
+  notify(`ยินดีต้อนรับ ${p.name} 🏕️`, "#aaf0c2");
+  showScreen("none");
+  showHud(true);
+  overlay.classList.remove("visible");
+  paused = false;
   running = true;
-  startEl.style.display = "none";
-  updateHUD();
-});
+  lastTs = performance.now();
+  renderCraft();
+  renderQuests();
+}
 
-// --- Main loop ---
-function loop(now: number): void {
-  if (running) {
-    const dt = Math.min((now - lastTick) / 1000, 0.05);
-    lastTick = now;
-    camera.x += (player.x - camera.x) * Math.min(1, dt * 6);
-    camera.y += (player.y - camera.y) * Math.min(1, dt * 6);
-    update(dt);
-    // throttle HUD refresh
-    if (msgT > 0) { msgT -= dt; msgEl.textContent = msg; if (msgT <= 0) msgEl.textContent = ""; }
-    draw();
+function beginNewGame(): void {
+  const seedInput = $<HTMLInputElement>("world-seed").value || "1337";
+  const seed = seedFrom(seedInput);
+  const name = $<HTMLInputElement>("char-name").value || "นักผจญภัย";
+  // spawn near village center (36,36)
+  const p = newPlayer(name, outfitColor, 36, 36);
+  startGame(p, seed, 6);
+}
+
+let outfitColor = "#e53935";
+
+// ============================================================
+//  RENDER WORLD
+// ============================================================
+function drawTileScreenSpace(sx: number, sy: number, id: number): void {
+  switch (id) {
+    case T_GRASS: case T_GRASS_ALT: ctx.fillStyle = "#3f8f43"; break;
+    case T_DIRT: ctx.fillStyle = "#8a6a3b"; break;
+    case T_SAND: ctx.fillStyle = "#d9c27a"; break;
+    case T_WATER: ctx.fillStyle = "#3a7bd5"; break;
+    case T_STONE: ctx.fillStyle = "#6b7280"; break;
+    case T_TREE: ctx.fillStyle = "#2e6b2e"; break;
+    case T_ROCK: ctx.fillStyle = "#555f6e"; break;
+    case T_BUSH: ctx.fillStyle = "#57a05a"; break;
+    case T_BERRY: ctx.fillStyle = "#b03d7a"; break;
+    case T_FLOOR: ctx.fillStyle = "#a8845a"; break;
+    case T_PATH: ctx.fillStyle = "#9aa0ac"; break;
+    default: ctx.fillStyle = "#3f8f43";
   }
+  ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+  // tile details
+  if (id === T_TREE || id === T_BUSH || id === T_BERRY || id === T_ROCK) {
+    ctx.fillStyle = id === T_ROCK ? "#454c58" : "#1c5a1c";
+    ctx.beginPath();
+    ctx.arc(sx + 8, sy + 8, 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function worldToScreen(wx: number, wy: number): { sx: number; sy: number } {
+  return { sx: (wx - camX) * TILE_SIZE + canvas.width / 2, sy: (wy - camY) * TILE_SIZE + canvas.height / 2 };
+}
+
+function render(): void {
+  const cw = canvas.width, ch = canvas.height;
+  ctx.clearRect(0, 0, cw, ch);
+  const rad = 24;
+  const left = Math.floor(camX - (cw / 2) / TILE_SIZE);
+  const top = Math.floor(camY - (ch / 2) / TILE_SIZE);
+  const right = Math.ceil(camX + (cw / 2) / TILE_SIZE);
+  const bottom = Math.ceil(camY + (ch / 2) / TILE_SIZE);
+  for (let z = top; z <= bottom; z++) {
+    for (let x = left; x <= right; x++) {
+      const id = world.tileAt(x, z);
+      const { sx, sy } = worldToScreen(x, z);
+      drawTileScreenSpace(sx, sy, id);
+    }
+  }
+
+  // enemies
+  for (const e of enemies) {
+    const { sx, sy } = worldToScreen(e.x, e.y);
+    ctx.fillStyle = e.kind === "slime" ? "#7ce0a0" : "#d97878";
+    ctx.fillRect(sx + 3, sy + 3, 10, 10);
+    // hp bar
+    const pct = e.hp / e.maxHp;
+    ctx.fillStyle = "#14203a";
+    ctx.fillRect(sx, sy - 3, 14, 2);
+    ctx.fillStyle = pct > 0.5 ? "#7ce07c" : "#e05353";
+    ctx.fillRect(sx, sy - 3, 14 * pct, 2);
+    // eyes
+    ctx.fillStyle = "#000";
+    ctx.fillRect(sx + 5, sy + 5, 2, 2);
+    ctx.fillRect(sx + 10, sy + 5, 2, 2);
+  }
+
+  // player
+  const { sx, sy } = worldToScreen(player.pos.x, player.pos.y);
+  ctx.fillStyle = player.outfit || outfitColor;
+  ctx.fillRect(sx + 3, sy + 3, 10, 12);
+  ctx.fillStyle = "#e8b57a";
+  ctx.fillRect(sx + 6, sy, 4, 4); // head
+  // facing/equip indicator
+  if (player.equip) {
+    ctx.fillStyle = "#fff";
+    ctx.font = "8px monospace";
+    ctx.fillText(ITEMS[player.equip]?.icon ?? "✔", sx, sy - 4);
+  }
+
+  // day/night overlay
+  const darkness = dayDarkness();
+  if (darkness > 0.02) {
+    ctx.fillStyle = `rgba(5,10,30,${darkness * 0.6})`;
+    ctx.fillRect(0, 0, cw, ch);
+  }
+}
+
+function dayDarkness(): number {
+  // time in [0,24]; night when <6 or >20
+  let d = 0;
+  if (time < 6) d = (6 - time) / 6;
+  else if (time > 20) d = (time - 20) / 4;
+  else if (time > 17) d = (time - 17) / 3;
+  if (d < 0) d = 0;
+  return Math.min(1, d);
+}
+
+function renderMinimap(): void {
+  if (!minimapCtx || !minimapCv) return;
+  const c = minimapCtx;
+  const size = minimapCv.width;
+  const scale = 2; // world units per minimap px
+  c.clearRect(0, 0, size, size);
+  c.fillStyle = "#0a101e";
+  c.fillRect(0, 0, size, size);
+  const mw = size / scale;
+  // sample
+  for (let my = 0; my < size; my++) {
+    for (let mx = 0; mx < size; mx++) {
+      const wx = Math.floor(camX + (mx - size / 2) / scale);
+      const wy = Math.floor(camY + (my - size / 2) / scale);
+      const id = world.tileAt(wx, wy);
+      c.fillStyle = id === T_WATER ? "#3a7bd5" : id === T_TREE ? "#2e6b2e" : id === T_ROCK ? "#777" : id === T_SAND ? "#d9c27a" : "#3f8f43";
+      c.fillRect(mx, my, 1, 1);
+    }
+  }
+  // player marker
+  c.fillStyle = "#fff";
+  c.fillRect(size / 2 - 1, size / 2 - 1, 3, 3);
+  // enemies
+  for (const e of enemies) {
+    const ex = size / 2 + (e.x - camX) * scale;
+    const ey = size / 2 + (e.y - camY) * scale;
+    if (ex < 0 || ex > size || ey < 0 || ey > size) continue;
+    c.fillStyle = "#e05353";
+    c.fillRect(ex, ey, 2, 2);
+  }
+}
+
+// ============================================================
+//  COMBAT / ENEMIES
+// ============================================================
+function spawnEnemies(): void {
+  while (enemies.length < 3) {
+    const ang = Math.random() * Math.PI * 2;
+    const dist = 30 + Math.random() * 80;
+    const ex = Math.round(camX + Math.cos(ang) * dist);
+    const ey = Math.round(camY + Math.sin(ang) * dist);
+    if (!world.isWalkable(ex, ey)) continue;
+    enemies.push({ x: ex, y: ey, hp: 12, maxHp: 12, dmg: 3, kind: Math.random() < 0.5 ? "slime" : "goblin", aggro: false });
+  }
+}
+
+function updateEnemies(dt: number): void {
+  spawnTimer -= dt;
+  if (spawnTimer <= 0) { spawnEnemies(); spawnTimer = 5; }
+  for (const e of enemies) {
+    const dx = player.pos.x - e.x, dy = player.pos.y - e.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 14) e.aggro = true;
+    if (e.aggro) {
+      const speed = 2.4 * dt;
+      if (dist > 1) {
+        e.x += (dx / dist) * speed;
+        e.y += (dy / dist) * speed;
+      }
+      if (dist < 1.4) {
+        if (performance.now() / 1000 > (e as any).atkTimer) {
+          player.hp = Math.max(0, player.hp - e.dmg);
+          (e as any).atkTimer = performance.now() / 1000 + 1;
+          notify(`${e.kind} โจมตีคุณ! -${e.dmg}`, "#ff8a80");
+        }
+      }
+    }
+  }
+  enemies = enemies.filter((e) => e.hp > 0);
+}
+
+function attack(): void {
+  if (performance.now() / 1000 < attackCooldown) return;
+  attackCooldown = performance.now() / 1000 + 0.5;
+  // find nearest enemy within range 18
+  let best: Enemy | null = null, bestD = 18;
+  for (const e of enemies) {
+    const d = Math.hypot(e.x - player.pos.x, e.y - player.pos.y);
+    if (d < bestD) { bestD = d; best = e; }
+  }
+  const dmg = equippedDamage(player) + Math.floor(Math.random() * 2);
+  if (best) {
+    best.hp -= dmg;
+    notify(`โจมตี ${best.kind}! -${dmg}`, "#ffd54f");
+    if (best.hp <= 0) {
+      notify(`⚔️ กำจัด ${best.kind}! +20 XP`, "#aaf0c2");
+      addXp(player, 20);
+      questProgress("kill_slime", 1);
+      // loot
+      const loot = Math.random() < 0.4 ? "meat_raw" : Math.random() < 0.5 ? "fiber" : null;
+      if (loot) { addItem(player, loot, 1); notify(`ได้รับ ${ITEMS[loot]?.icon} ${ITEMS[loot]?.name}`, "#aaf0c2"); }
+      if (addXpLevelCheck()) return;
+    }
+  } else {
+    notify("ไม่มีศัตรูในระยะ", "#ffd54f");
+  }
+}
+
+function addXpLevelCheck(): boolean {
+  const leveled = addXp(player, 0);
+  // addXp already called in kill; detect level up separately below in game loop
+  return leveled;
+}
+
+// ============================================================
+//  ACTION HANDLERS
+// ============================================================
+function interact(): void {
+  const t = world.tileAt(Math.round(player.pos.x), Math.round(player.pos.y));
+  const g = world.gather(Math.round(player.pos.x), Math.round(player.pos.y));
+  if (g) {
+    world.consume(Math.round(player.pos.x), Math.round(player.pos.y));
+    let mult = 1;
+    const eq = player.equip ? ITEMS[player.equip] : null;
+    if (eq?.tool === "axe" && g.item === "wood") mult = 2;
+    if (eq?.tool === "pickaxe" && g.item === "stone") mult = 2;
+    addItem(player, g.item, g.count * mult);
+    notify(`+${g.count * mult} ${ITEMS[g.item]?.icon} ${ITEMS[g.item]?.name}`, "#aaf0c2");
+    if (g.item === "wood") questProgress("gather_wood", g.count * mult);
+    if (g.item === "fiber" || g.item === "berry") addXp(player, 3);
+    renderHud();
+  }
+}
+
+function questProgress(id: string, amt: number): void {
+  const q = quests.find((x) => x.id === id && !x.done);
+  if (!q) return;
+  q.progress += amt;
+  if (q.progress >= q.target) {
+    q.done = true;
+    notify(`✅ ภารกิจสำเร็จ: ${q.name}! +50 XP`, "#aaf0c2");
+    addXp(player, 50);
+  }
+  renderQuests();
+  renderHud();
+}
+
+function quickUse(slotIdx: number): void {
+  const s = player.inv[slotIdx];
+  if (!s) return;
+  const def = ITEMS[s.item];
+  if (def?.category === "food") {
+    useItem(player, slotIdx);
+    notify(`กิน ${def.icon} ${def.name}`, "#aaf0c2");
+  } else if (def?.category === "tool" || def?.category === "weapon") {
+    useItem(player, slotIdx);
+    player.equip = s.item;
+    notify(`ถือ ${def.icon} ${def.name}`, "#ffd54f");
+  } else {
+    selectedSlot = slotIdx;
+  }
+  renderHud();
+  renderQuickBar();
+}
+
+// ============================================================
+//  QUICK BAR
+// ============================================================
+function renderQuickBar(): void {
+  const qb = $("quick-bar");
+  if (!qb) return;
+  const shown = player.inv.slice(0, 6);
+  qb.innerHTML = "";
+  for (let i = 0; i < 6; i++) {
+    const s = shown[i];
+    const el = document.createElement("div");
+    el.className = "qslot" + (i === selectedSlot ? " sel" : "");
+    if (s) {
+      const def = ITEMS[s.item];
+      el.innerHTML = `${def?.icon ?? ""}<br/><span style="font-size:10px;color:#fff">${s.count}${def && (def.category === "tool" || def.category === "weapon") ? "•" : ""}</span>`;
+    }
+    el.addEventListener("touchstart", (e) => { e.preventDefault(); quickUse(i); }, { passive: false });
+    el.addEventListener("mousedown", (e) => { e.preventDefault(); quickUse(i); });
+    qb.appendChild(el);
+  }
+}
+
+// ============================================================
+//  HUD UPDATE
+// ============================================================
+function renderHud(): void {
+  $("hud-hp").textContent = `${Math.ceil(player.hp)}`;
+  $("hud-hunger").textContent = `${Math.ceil(player.hunger)}`;
+  $("hud-level").textContent = `${player.level}`;
+  const need = xpNeed(player);
+  const pct = Math.min(100, Math.round((player.xp / need) * 100));
+  $("xp-fill").style.width = `${pct}%`;
+}
+
+// ============================================================
+//  CONTROLS
+// ============================================================
+const joystick = new TouchJoystick();
+const keyboard = new KeyboardInput();
+
+function setupControls(): void {
+  joystick.attach($("joy-zone"), $("joy-base"), $("joy-knob"));
+
+  // attack
+  setupButton($("btn-attack"), () => { attack(); });
+  // interact (hold)
+  setupButton($("btn-interact"), () => { interact(); }, () => {});
+  // dodge
+  setupButton($("btn-dodge"), () => { dodgeUntil = performance.now() / 1000 + 0.35; });
+  // use
+  setupButton($("btn-use"), () => { if (selectedSlot >= 0) quickUse(selectedSlot); }, () => {});
+
+  setupButton($("menu-btn"), () => { openPause(); }, () => {});
+}
+
+function dodgeMove(): boolean {
+  return performance.now() / 1000 < dodgeUntil;
+}
+
+// ============================================================
+//  PAUSE OVERLAY
+// ============================================================
+function openPause(): void {
+  paused = true;
+  running = false;
+  overlay.classList.add("visible");
+}
+
+function closePause(): void {
+  overlay.classList.remove("visible");
+  paused = false;
+  running = true;
+  lastTs = performance.now();
+}
+
+// ============================================================
+//  GAME UPDATE
+// ============================================================
+function update(dt: number): void {
+  // movement
+  const joy = joystick.read();
+  const kb = keyboard.read();
+  let dx = joy.dx || kb.dx;
+  let dy = joy.dy || kb.dy;
+  const mag = joy.magnitude || kb.magnitude;
+  const speed = 90 * (dodgeMove() ? 3 : 1);
+  if (mag > 0) {
+    const nx = player.pos.x + dx * speed * dt;
+    const ny = player.pos.y + dy * speed * dt;
+    if (world.isWalkable(Math.round(nx), Math.round(player.pos.y))) player.pos.x = nx;
+    if (world.isWalkable(Math.round(player.pos.x), Math.round(ny))) player.pos.y = ny;
+  }
+
+  // camera follow
+  camX += (player.pos.x - camX) * Math.min(1, 8 * dt);
+  camY += (player.pos.y - camY) * Math.min(1, 8 * dt);
+
+  // survival
+  survivalTick(player, dt);
+  if (player.hp <= 0) {
+    player.hp = 1;
+    player.pos.x = 36; player.pos.y = 36;
+    camX = 36; camY = 36;
+    notify("💀 คุณฟื้นคืนชีพที่หมู่บ้าน!", "#ff8a80");
+  }
+
+  // time
+  time += dt / DAY_LEN * 24;
+  if (time >= 24) { time -= 24; dayCount++; }
+
+  // combat
+  updateEnemies(dt);
+
+  // context: show interact button if gatherable tile nearby
+  const tile = world.tileAt(Math.round(player.pos.x), Math.round(player.pos.y));
+  const gatherable = world.gather(Math.round(player.pos.x), Math.round(player.pos.y)) !== null;
+  $("btn-interact").style.display = gatherable ? "" : "none";
+  $("btn-use").style.display = selectedSlot >= 0 ? "" : "none";
+}
+
+// ============================================================
+//  MAIN LOOP
+// ============================================================
+function loop(ts: number): void {
+  requestAnimationFrame(loop);
+  if (!running) return;
+  if (paused) return;
+  const dt = Math.min(0.05, (ts - lastTs) / 1000);
+  lastTs = ts;
+  update(dt);
+  render();
+  renderMinimap();
+  if (msgTimer > 0) {
+    msgTimer -= dt;
+    if (msgTimer <= 0) msgEl.textContent = "";
+  }
+  // level-up detection via HUD each frame (cheap enough)
+  renderHud();
+  renderQuickBar();
+}
+
+// ============================================================
+//  MENU WIRING
+// ============================================================
+function goMainMenu(): void {
+  running = false;
+  paused = false;
+  showHud(false);
+  overlay.classList.remove("visible");
+  showScreen("screen-menu");
+  updateContinueBtn();
+}
+
+function updateContinueBtn(): void {
+  $("btn-continue").style.display = hasSave() ? "" : "none";
+}
+
+function init(): void {
+  buildDynamicUI();
+
+  setupControls();
+
+  // menu
+  $("btn-continue").addEventListener("click", () => {
+    const s = loadGame();
+    if (s) {
+      // outfit from saved player
+      startGame(s.p, s.seed, s.time);
+    }
+  });
+  $("btn-new").addEventListener("click", () => {
+    showScreen("screen-create");
+    // randomize seed
+    $<HTMLInputElement>("world-seed").value = String(Math.floor(Math.random() * 999999));
+  });
+  $("btn-load").addEventListener("click", () => {
+    const s = loadGame();
+    if (s) {
+      startGame(s.p, s.seed, s.time);
+    } else {
+      notify("ไม่มีไฟล์เซฟ", "#ff8a80");
+      showScreen("screen-menu");
+    }
+  });
+  $("btn-settings").addEventListener("click", () => notify("ตั้งค่าอยู่ระหว่างพัฒนา", "#ffd54f"));
+  $("btn-credits").addEventListener("click", () => notify("🧭 SuvivalCraft — ส่วนหนึ่งของ SuvivalAcraft", "#9fb0d8"));
+
+  // character creation
+  $("btn-random-seed").addEventListener("click", () => {
+    $<HTMLInputElement>("world-seed").value = String(Math.floor(Math.random() * 999999));
+  });
+  document.querySelectorAll<HTMLElement>("#outfit-row .swatch").forEach((sw) => {
+    sw.addEventListener("click", () => {
+      document.querySelectorAll<HTMLElement>("#outfit-row .swatch").forEach((s) => s.classList.remove("sel"));
+      sw.classList.add("sel");
+      outfitColor = sw.dataset.c || "#e53935";
+    });
+  });
+  $("btn-start").addEventListener("click", () => { beginNewGame(); });
+
+  // pause overlay
+  $("btn-resume").addEventListener("click", () => { closePause(); });
+  $("btn-save").addEventListener("click", () => {
+    saveGame(player, gameSeed, time);
+    notify("💾 บันทึกเกมแล้ว", "#aaf0c2");
+  });
+  $("btn-mainmenu").addEventListener("click", () => { goMainMenu(); });
+
+  updateContinueBtn();
+  renderHud();
+
+  // handle window resize
+  function resize(): void {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.floor(window.innerWidth * dpr);
+    canvas.height = Math.floor(window.innerHeight * dpr);
+    canvas.style.width = window.innerWidth + "px";
+    canvas.style.height = window.innerHeight + "px";
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
   requestAnimationFrame(loop);
 }
-requestAnimationFrame((t) => { lastTick = t; loop(t); });
+
+init();

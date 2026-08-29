@@ -2,66 +2,142 @@
 <html lang="th">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="SuvivalAcraft Open World — survival crafting game (web build)" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="description" content="SuvivalAcraft Open World — 2D survival RPG" />
     <title>SuvivalAcraft Open World</title>
     <style>
-      * { box-sizing: border-box; }
-      html, body { margin: 0; height: 100%; background: #0b0f1a; color: #ecf0ff; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
-      #app { position: relative; width: 100%; height: 100%; }
-      canvas { position: absolute; inset: 0; image-rendering: pixelated; background: #0b0f1a; }
-      #hud { position: absolute; top: 0; left: 0; right: 0; padding: 10px 14px; display: flex; gap: 16px; align-items: flex-start; pointer-events: none; flex-wrap: wrap; }
-      .pill { background: rgba(10,15,26,.8); border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 6px 12px; font-size: 13px; }
-      .pill b { color: #8fb0ff; }
-      #bars { position: absolute; bottom: 72px; left: 14px; display: grid; gap: 6px; width: 220px; pointer-events: none; }
-      .bar { height: 14px; background: #14203a; border-radius: 7px; overflow: hidden; }
-      .bar > i { display: block; height: 100%; }
-      #hotbar { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: none; }
-      .slot { width: 46px; height: 46px; border: 2px solid rgba(255,255,255,.15); border-radius: 8px; background: rgba(10,15,26,.8); display: grid; place-items: center; font-size: 11px; text-align: center; }
-      .slot.active { border-color: #8fb0ff; background: rgba(143,176,255,.2); }
-      #panel { position: absolute; right: 14px; top: 14px; width: 240px; background: rgba(10,15,26,.92); border: 1px solid rgba(255,255,255,.14); border-radius: 14px; padding: 14px; }
-      #panel h3 { margin: 0 0 8px; font-size: 14px; color: #8fb0ff; }
-      #panel button { display: block; width: 100%; margin: 4px 0; padding: 7px 10px; border: 0; border-radius: 8px; background: #1c2b4d; color: #ecf0ff; cursor: pointer; font-size: 12px; text-align: left; }
-      #panel button:hover { background: #284072; }
-      #panel button:disabled { opacity: .4; cursor: not-allowed; }
-      #msg { position: absolute; bottom: 130px; left: 50%; transform: translateX(-50%); font-size: 13px; color: #aaf0c2; text-shadow: 0 1px 3px #000; pointer-events: none; }
-      .legend { position: absolute; bottom: 12px; left: 14px; font-size: 11px; color: #7f8db0; pointer-events: none; line-height: 1.6; }
-      #start { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 50% 30%, #16203a, #070b14); z-index: 5; }
-      #start .card { text-align: center; padding: 30px 40px; border: 1px solid rgba(255,255,255,.15); border-radius: 20px; background: rgba(10,15,26,.8); max-width: 420px; }
-      #start h1 { margin: 0 0 6px; font-size: 26px; }
-      #start p { color: #9fb0d0; font-size: 14px; }
-      #start input, #start select { margin-top: 12px; padding: 8px; width: 100%; border-radius: 8px; border: 1px solid #2a3b5f; background: #0d1526; color: #ecf0ff; }
-      #start button { margin-top: 14px; width: 100%; padding: 12px; border: 0; border-radius: 12px; background: linear-gradient(180deg,#8fb0ff,#577cff); color: #06101f; font-weight: 800; font-size: 15px; cursor: pointer; }
-      @media (max-width: 640px) {
-        #panel { width: 200px; }
-        #bars { width: 160px; }
-      }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body { margin: 0; height: 100%; background: #0b0f1a; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+      #app { position: fixed; inset: 0; }
+      #game { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; background: #0b0f1a; display: block; }
+
+      /* ---- SCREENS (main menu / char creation) ---- */
+      .screen { position: absolute; inset: 0; z-index: 10; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; background: radial-gradient(circle at 50% 20%, #1a2740, #070b14 75%); }
+      .screen.visible { display: flex; }
+      .menu-card { width: min(92vw, 420px); background: rgba(10,16,30,.94); border: 1px solid rgba(255,255,255,.14); border-radius: 22px; padding: 26px 24px; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+      .logo { text-align: center; margin-bottom: 18px; }
+      .logo h1 { font-size: 30px; margin: 0; letter-spacing: .5px; }
+      .logo p { color: #9fb0d8; margin: 6px 0 0; font-size: 13px; }
+      .btn { width: 100%; margin: 8px 0; padding: 14px; border: 0; border-radius: 12px; background: linear-gradient(180deg,#2a3f6b,#1c2b4d); color: #ecf0ff; font-size: 16px; font-weight: 700; cursor: pointer; text-align: center; }
+      .btn.primary { background: linear-gradient(180deg,#8fb0ff,#577cff); color: #06101f; }
+      .btn:active { transform: scale(.98); }
+      .field { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #2a3b5f; background: #0d1526; color: #ecf0ff; font-size: 16px; margin: 6px 0; }
+      label.field-label { display: block; font-size: 12px; color: #7f8db0; margin-top: 10px; }
+      .row { display: flex; gap: 8px; }
+      .row .btn { flex: 1; }
+      .swatch-row { display: flex; gap: 8px; justify-content: center; margin: 8px 0; }
+      .swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; }
+      .swatch.sel { border-color: #fff; }
+
+      /* ---- IN-GAME HUD ---- */
+      #hud { position: absolute; inset: 0; z-index: 5; display: none; }
+      #hud.playing { display: block; }
+      #top-bar { position: absolute; top: 0; left: 0; right: 0; padding: max(8px, env(safe-area-inset-top)) 12px 0; display: flex; gap: 12px; align-items: center; pointer-events: none; flex-wrap: wrap; }
+      .stat-chip { background: rgba(10,16,30,.78); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 4px 10px; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+      #top-right { margin-left: auto; }
+      #xp-bar { width: 140px; height: 8px; background: #14203a; border-radius: 4px; overflow: hidden; }
+      #xp-fill { height: 100%; background: #8fb0ff; width: 0%; }
+
+      /* joystick zone (left) */
+      #joy-zone { position: absolute; left: 0; bottom: 0; width: 45%; height: 55%; touch-action: none; }
+      #joy-base { position: absolute; left: 70px; bottom: 70px; width: 110px; height: 110px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); background: rgba(255,255,255,.05); }
+      #joy-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; transform: translate(-50%,-50%); border-radius: 50%; background: rgba(255,255,255,.4); }
+      .joy-move { opacity: 0; transition: opacity .15s; }
+
+      /* action buttons (right) */
+      #action-zone { position: absolute; right: 0; bottom: 0; width: 40%; height: 60%; touch-action: none; }
+      .action-btn { position: absolute; width: 64px; height: 64px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); background: rgba(10,16,30,.7); color: #fff; font-size: 22px; display: grid; place-items: center; touch-action: none; }
+      .action-btn:active { background: rgba(87,124,255,.6); }
+      #btn-attack { right: 30px; bottom: 30px; width: 76px; height: 76px; font-size: 15px; }
+      #btn-interact { right: 118px; bottom: 26px; width: 56px; height: 56px; font-size: 12px; }
+      #btn-dodge { right: 128px; bottom: 98px; width: 48px; height: 48px; font-size: 11px; }
+      #btn-use { right: 70px; bottom: 116px; width: 48px; height: 48px; font-size: 11px; }
+
+      /* quick slots (bottom center) */
+      #quick-bar { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
+      .qslot { width: 44px; height: 44px; border: 2px solid rgba(255,255,255,.2); border-radius: 8px; background: rgba(10,16,30,.8); display: grid; place-items: center; font-size: 12px; text-align: center; pointer-events: auto; }
+      .qslot.sel { border-color: #8fb0ff; background: rgba(143,176,255,.2); }
+
+      #msg { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); color: #aaf0c2; font-size: 14px; text-shadow: 0 1px 3px #000; pointer-events: none; text-align: center; }
+
+      /* menu buttons (in-game pause) */
+      #menu-btn { position: absolute; top: calc(max(8px,env(safe-area-inset-top)) + 4px); right: 10px; width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(255,255,255,.3); background: rgba(10,16,30,.8); color: #fff; font-size: 18px; z-index: 6; }
+      #overlay { position: absolute; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.6); }
+      #overlay.visible { display: flex; }
     </style>
   </head>
   <body>
     <div id="app">
-      <canvas id="game" width="960" height="600"></canvas>
+      <canvas id="game" width="840" height="480"></canvas>
+
+      <!-- Main Menu -->
+      <div id="screen-menu" class="screen visible">
+        <div class="menu-card">
+          <div class="logo"><h1>🧭 SuvivalCraft</h1><p>Survival Open World</p></div>
+          <button class="btn primary" id="btn-continue">Continue</button>
+          <button class="btn" id="btn-new">New Game</button>
+          <button class="btn" id="btn-load">Load Game</button>
+          <button class="btn" id="btn-settings">Settings</button>
+          <button class="btn" id="btn-credits">Credits</button>
+        </div>
+      </div>
+
+      <!-- Character Creation -->
+      <div id="screen-create" class="screen">
+        <div class="menu-card">
+          <h1 style="text-align:center;font-size:20px;margin:0 0 12px">สร้างตัวละคร</h1>
+          <label class="field-label">ชื่อตัวละคร</label>
+          <input id="char-name" class="field" value="นักผจญภัย" />
+          <label class="field-label">โลก</label>
+          <input id="world-name" class="field" value="โลกลิขิต" />
+          <label class="field-label">Seed</label>
+          <div class="row">
+            <input id="world-seed" class="field" value="1337" />
+            <button class="btn" id="btn-random-seed" style="flex:0 0 auto;padding:12px 14px">🎲</button>
+          </div>
+          <label class="field-label">สีเสื้อ</label>
+          <div class="swatch-row" id="outfit-row">
+            <div class="swatch sel" data-c="#e53935" style="background:#e53935"></div>
+            <div class="swatch" data-c="#1e88e5" style="background:#1e88e5"></div>
+            <div class="swatch" data-c="#43a047" style="background:#43a047"></div>
+            <div class="swatch" data-c="#fdd835" style="background:#fdd835"></div>
+            <div class="swatch" data-c="#8e24aa" style="background:#8e24aa"></div>
+            <div class="swatch" data-c="#ffffff" style="background:#ffffff"></div>
+          </div>
+          <button class="btn primary" id="btn-start">เริ่มเกม</button>
+        </div>
+      </div>
+
+      <!-- In-game HUD -->
       <div id="hud">
-        <div class="pill">🌍 <b id="hud-pos">0,0</b></div>
-        <div class="pill">🧙 <b id="hud-level">Lv 1</b></div>
-        <div class="pill">⭐ <b id="hud-xp">0 XP</b></div>
+        <div id="top-bar">
+          <div class="stat-chip">❤️ <b id="hud-hp">20</b></div>
+          <div class="stat-chip">🍖 <b id="hud-hunger">20</b></div>
+          <div class="stat-chip">⭐ Lv <b id="hud-level">1</b></div>
+          <div id="top-right" class="stat-chip"><div id="xp-bar"><div id="xp-fill"></div></div></div>
+        </div>
+        <div id="menu-btn">⚙</div>
+        <div id="msg"></div>
+
+        <div id="joy-zone"><div id="joy-base" class="joy-move"><div id="joy-knob"></div></div></div>
+
+        <div id="action-zone">
+          <div class="action-btn" id="btn-attack">⚔<br/><span style="font-size:10px">โจมตี</span></div>
+          <div class="action-btn" id="btn-interact" style="display:none">🤝<br/><span style="font-size:9px">โต้ตอบ</span></div>
+          <div class="action-btn" id="btn-dodge">💨<br/><span style="font-size:9px">หลบ</span></div>
+          <div class="action-btn" id="btn-use" style="display:none">🍎<br/><span style="font-size:9px">ใช้</span></div>
+        </div>
+
+        <div id="quick-bar"></div>
       </div>
-      <div id="bars">
-        <div class="bar"><i id="bar-hp" style="width:100%;background:#e55039;"></i></div>
-        <div class="bar"><i id="bar-hunger" style="width:100%;background:#f6b93b;"></i></div>
-        <div class="bar"><i id="bar-thirst" style="width:100%;background:#4a9ef5;"></i></div>
-      </div>
-      <div id="hotbar"></div>
-      <div id="msg"></div>
-      <div class="legend">WASD เคลื่อนที่ · คลิก วางบล็อก/เก็บของ · [1-5] เลือกช่อง · C คราฟต์</div>
-      <div id="panel"></div>
-      <div id="start">
-        <div class="card">
-          <h1>🧱 SuvivalAcraft Open World</h1>
-          <p>ตั้งชื่อและเลือกเมล็ดโลกเพื่อเริ่มสำรวจ เก็บของ คราฟต์ และเอาตัวรอด</p>
-          <input id="name" placeholder="ชื่อผู้เล่น" value="ผู้เล่น" />
-          <select id="world"></select>
-          <button id="btn-start">เริ่มเกม</button>
+
+      <!-- Pause overlay -->
+      <div id="overlay">
+        <div class="menu-card">
+          <h1 style="text-align:center;margin-top:0">⏸ หยุด</h1>
+          <button class="btn primary" id="btn-resume">เล่นต่อ</button>
+          <button class="btn" id="btn-save">บันทึกเกม</button>
+          <button class="btn" id="btn-mainmenu">กลับเมนูหลัก</button>
         </div>
       </div>
     </div>
