@@ -13,6 +13,9 @@ export const RECIPES: RecipeDef[] = [
   { id: "iron_sword", name: "ดาบเหล็ก", station: "crafting_table", result: { item: "iron_sword", count: 1 }, ingredients: [{ item: "stick", count: 1 }, { item: "iron_ingot", count: 2 }] },
   { id: "bread", name: "ขนมปัง", station: "furnace", result: { item: "bread", count: 1 }, ingredients: [{ item: "wheat", count: 3 }] },
   { id: "torch", name: "คบเพลิง", station: "crafting_table", result: { item: "torch", count: 4 }, ingredients: [{ item: "stick", count: 1 }, { item: "coal", count: 1 }] },
+  { id: "fence", name: "รั้ว", station: "crafting_table", result: { item: "fence", count: 4 }, ingredients: [{ item: "stick", count: 2 }, { item: "wood_planks", count: 2 }] },
+  { id: "wall", name: "กำแพงหิน", station: "crafting_table", result: { item: "wall", count: 1 }, ingredients: [{ item: "stone", count: 4 }] },
+  { id: "door", name: "ประตู", station: "crafting_table", result: { item: "door", count: 1 }, ingredients: [{ item: "wood_planks", count: 6 }] },
   { id: "cobblestone_block", name: "บล็อกกรวด", station: "crafting_table", result: { item: "cobblestone_block", count: 1 }, ingredients: [{ item: "cobblestone", count: 4 }] },
 ];
 

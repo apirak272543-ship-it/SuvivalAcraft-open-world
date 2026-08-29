@@ -26,7 +26,7 @@ Engine แยกออกจาก Renderer (game/ = logic Engine, web/ = Render
 | 06 | Survival System (health/hunger/thirst/stamina/temperature) | DONE (hp/hunger/thirst/stamina) | master |
 | 07 | Inventory (item id/quantity/durability/metadata) | DONE (id/quantity) | master |
 | 08 | Crafting (data-driven recipes, tiers) | DONE (basic) | master |
-| 09 | Building (grid: foundation/wall/door/window/floor) | DONE (place block) | master |
+| 09 | Building (fence/wall/door/wood_planks/sap + grid) | DONE | master |
 | 10 | Creature AI (state machine: idle/wander/sense/search/chase/attack/flee) | DONE | master |
 | 11 | Combat (weapon stats/damage/armor/crit) | DONE | master |
 | 12 | Day/Night (cycle + visibility/temperature/creature activity) | DONE | master |
@@ -40,7 +40,7 @@ Engine แยกออกจาก Renderer (game/ = logic Engine, web/ = Render
 
 # CURRENT WORK
 
-Task: 19 Game-feel polish (building UI, farming UI, save UI) 
+Task: 20 Building/farming content + polish 
 Owner: master
 Status: PENDING
 
@@ -129,4 +129,10 @@ Commit: (AI engine commit นี้)
 Task: 12 Day/Night + 13 Weather + 10 AI-in-web
 Status: DONE
 Evidence: `game/src/world/daynight.ts`, `game/src/world/weather.ts`, `tests/daynight-weather.test.ts` (4 tests); suite 58/58; web build PASS
+Commit: (นี้)
+
+## CP-004
+Task: 08 Crafting recipes + 09 Building (fence/wall/door) + sprites + data sync
+Status: DONE
+Evidence: items/blocks/recipes registries + data JSON aligned; content:validate PASS; tests 58/58; web build PASS
 Commit: (นี้)

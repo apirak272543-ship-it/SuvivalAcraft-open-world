@@ -288,5 +288,35 @@
       "melee"
     ],
     "durability": 60
+  },
+  "fence": {
+    "id": "fence",
+    "name": "รั้ว",
+    "category": "structure",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "structure"
+    ]
+  },
+  "wall": {
+    "id": "wall",
+    "name": "กำแพงหิน",
+    "category": "structure",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "structure"
+    ]
+  },
+  "door": {
+    "id": "door",
+    "name": "ประตู",
+    "category": "structure",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "structure"
+    ]
   }
 }

@@ -38,6 +38,9 @@ export const ITEMS: Record<string, ItemDef> = {
   wheat_seed: { id: "wheat_seed", name: "เมล็ดข้าวสาลี", category: "seed", stackLimit: 64, tier: 1, tags: ["seed"] },
   wheat: { id: "wheat", name: "ข้าวสาลี", category: "material", stackLimit: 64, tier: 1, tags: ["crop", "material"] },
   cobblestone_block: { id: "cobblestone_block", name: "บล็อกกรวด", category: "structure", stackLimit: 64, tier: 1, tags: ["structure"] },
+  fence: { id: "fence", name: "รั้ว", category: "structure", stackLimit: 64, tier: 1, tags: ["structure"] },
+  wall: { id: "wall", name: "กำแพงหิน", category: "structure", stackLimit: 64, tier: 1, tags: ["structure"] },
+  door: { id: "door", name: "ประตู", category: "structure", stackLimit: 64, tier: 1, tags: ["structure"] },
   // Misc
   torch: { id: "torch", name: "คบเพลิง", category: "misc", stackLimit: 64, tier: 1, tags: ["light"] },
 };

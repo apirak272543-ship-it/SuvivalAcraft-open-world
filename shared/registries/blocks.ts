@@ -27,5 +27,8 @@ export const BLOCKS: Record<string, BlockDef> = {
   wheat_crop_0: { id: "wheat_crop_0", name: "ต้นข้าว(งอก)", hardness: 0.2, solid: false, transparent: true },
   wheat_crop_1: { id: "wheat_crop_1", name: "ต้นข้าว(โต)", hardness: 0.2, solid: false, transparent: true },
   wheat_crop_2: { id: "wheat_crop_2", name: "ต้นข้าว(พร้อมเก็บ)", hardness: 0.2, solid: false, transparent: true, drops: [{ item: "wheat", min: 1, max: 2 }] },
+  fence: { id: "fence", name: "รั้ว", hardness: 2, solid: true, drops: [{ item: "wood", min: 1, max: 1 }] },
+  wall: { id: "wall", name: "กำแพงหิน", hardness: 3, solid: true, tool: { type: "pickaxe", level: 1 }, drops: [{ item: "stone_block", min: 1, max: 1 }] },
+  door: { id: "door", name: "ประตู", hardness: 2, solid: true, drops: [{ item: "wood_planks", min: 2, max: 2 }] },
   cobblestone_block: { id: "cobblestone_block", name: "บล็อกกรวด", hardness: 2, solid: true, drops: [{ item: "cobblestone_block", min: 1, max: 1 }] },
 };
