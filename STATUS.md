@@ -20,6 +20,7 @@
 | G6 | Web build (HTML/canvas เล่นได้บนเบราว์เซอร์) | ✅ เสร็จ (deploy GitHub Pages) |
 | G7 | เพิ่มระบบ save/load จริง + หน้า UI เลือกโลก | ⏳ ยังไม่เริ่ม (มี web แบบ single-session) |
 | G8 | Multiplayer (LAN/local-first เสมือน A_Survival) | ⏳ ยังไม่เริ่ม |
+| G9 | Day/Night + Weather + Creature AI ในเกมจริง + sprite atlas | ✅ เสร็จ |
 
 ## 2. สถานะล่าสุด (Checkpoint)
 

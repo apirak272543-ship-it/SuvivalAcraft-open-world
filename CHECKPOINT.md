@@ -29,8 +29,8 @@ Engine แยกออกจาก Renderer (game/ = logic Engine, web/ = Render
 | 09 | Building (grid: foundation/wall/door/window/floor) | DONE (place block) | master |
 | 10 | Creature AI (state machine: idle/wander/sense/search/chase/attack/flee) | DONE | master |
 | 11 | Combat (weapon stats/damage/armor/crit) | DONE | master |
-| 12 | Day/Night (cycle + visibility/temperature/creature activity) | IN_PROGRESS | master |
-| 13 | Weather (clear/rain/storm/fog + gameplay effect) | PENDING | master |
+| 12 | Day/Night (cycle + visibility/temperature/creature activity) | DONE | master |
+| 13 | Weather (clear/rain/storm/fog + gameplay effect) | DONE | master |
 | 14 | World Events (migration/storm/wildfire/merchant/camp...) | PENDING | master |
 | 15 | Local Save (IndexedDB/PWA) + Save Migration (version) | PENDING | master |
 | 16 | LAN Multiplayer (host-authoritative) | PENDING | master |
@@ -40,9 +40,9 @@ Engine แยกออกจาก Renderer (game/ = logic Engine, web/ = Render
 
 # CURRENT WORK
 
-Task: 18 Game Assets (copy CC0 tiles: ground/tree/fence/tools) + integrate renderer
+Task: 19 Game-feel polish (building UI, farming UI, save UI) 
 Owner: master
-Status: IN_PROGRESS
+Status: PENDING
 
 ---
 
@@ -59,14 +59,15 @@ Status: IN_PROGRESS
 - [x] 09 Building (basic) — `game/src/building/`
 - [x] 11 Combat — `game/src/combat/`
 - [x] Web build & GitHub Pages deploy
+- [x] Sprite atlas (assets/tiles/atlas.png) + renderer sprite-based
 
 ---
 
 # REMAINING
 
 - [x] 10 Creature AI — `game/src/ai/` state machine: IDLE/WANDER/SENSE/SEARCH/CHASE/ATTACK/FLEE/RETURN + Creature entity
-- [ ] 12 Day/Night — วัฏจักร + effect ต่อ visibility/temperature/creature activity
-- [ ] 13 Weather — clear/rain/storm/fog + effect ต่อ soil/water/visibility/fire
+- [x] 12 Day/Night — `game/src/world/daynight.ts` (DAWN/DAY/EVENING/NIGHT + light curve + day counter)
+- [x] 13 Weather — `game/src/world/weather.ts` (clear/rain/heavy_rain/storm/fog/heat/cold + effects + scheduler)
 - [ ] 14 World Events — events เปลี่ยน World State จริง
 - [ ] 15 Local Save — IndexedDB (web) + version migration
 - [ ] 16 LAN Multiplayer — host-authoritative
@@ -78,13 +79,13 @@ Status: IN_PROGRESS
 
 # LAST COMPLETED
 
-10.x Creature AI state machine + tests (7 tests)
+12.x Day/Night + 13.x Weather + 10.x AI integrated into web game + sprite atlas
 
 ---
 
 # NEXT ACTION
 
-Integrate CC0 game assets (ground/tree/fence/tools) into web renderer, then Day/Night effect
+Building UI (place wall/door/fence), farming UI (plant/harvest), then Local Save (IndexedDB)
 
 ---
 
@@ -123,3 +124,9 @@ Task: 10 Creature AI (state machine)
 Status: DONE
 Evidence: `game/src/ai/state-machine.ts` + `creature.ts` + `tests/ai.test.ts` (7 tests PASS); suite 54/54
 Commit: (AI engine commit นี้)
+
+## CP-003
+Task: 12 Day/Night + 13 Weather + 10 AI-in-web
+Status: DONE
+Evidence: `game/src/world/daynight.ts`, `game/src/world/weather.ts`, `tests/daynight-weather.test.ts` (4 tests); suite 58/58; web build PASS
+Commit: (นี้)

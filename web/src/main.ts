@@ -5,7 +5,6 @@ import { Inventory } from "../../game/src/inventory/inventory.js";
 import { craft, canCraft, listRecipes } from "../../game/src/crafting/crafting.js";
 import { attackEnemy } from "../../game/src/combat/combat.js";
 import { Enemy } from "../../game/src/enemies/enemy.js";
-import { ENEMIES } from "../../shared/registries/enemies.js";
 import { BIOMES } from "../../shared/registries/biomes.js";
 import { BLOCKS } from "../../shared/registries/blocks.js";
 import { ITEMS } from "../../shared/registries/items.js";
@@ -15,10 +14,26 @@ import { Farm } from "../../game/src/farming/farming.js";
 import { Rng } from "../../game/src/core/rng.js";
 import type { GameEvent } from "../../shared/contracts/events.js";
 import type { StatBlock } from "../../shared/types/state.js";
+import { createDayNight, tickDayNight, phaseLabel } from "../../game/src/world/daynight.js";
+import { createWeather, tickWeather, weatherLabel } from "../../game/src/world/weather.js";
+import { Creature } from "../../game/src/ai/creature.js";
+import { ENEMIES } from "../../shared/registries/enemies.js";
 
 // --- Canvas / DOM ---
 const canvas = document.getElementById("game") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d")!;
+
+// --- Sprite atlas (CC0-style placeholder: assets/tiles/atlas.png) ---
+const atlasImg = new Image();
+let atlas: HTMLImageElement | null = null;
+let atlasTiles: Record<string, number> = {};
+const ATLAS_TILE = 16;
+atlasImg.onload = () => { atlas = atlasImg; };
+atlasImg.src = "/tiles/atlas.png";
+fetch("/tiles/index.json")
+  .then((r) => r.json())
+  .then((d: { tiles: Record<string, number> }) => { atlasTiles = d.tiles; })
+  .catch(() => {});
 const hotbarEl = document.getElementById("hotbar")!;
 const panelEl = document.getElementById("panel")!;
 const msgEl = document.getElementById("msg")!;
@@ -56,6 +71,10 @@ let msgT = 0;
 let selectedSlot = 0;
 let running = false;
 const TILE = 24;
+let dn = createDayNight(300, 0.45);
+let weather = createWeather("clear", 0, 25);
+let creatures: Creature[] = [];
+const ENEMY_IDS = Object.keys(ENEMIES);
 
 function makeWorld(seed: number): World {
   const w = new World({ seed, chunkSize: 16, radiusChunks: 0, dayLengthSeconds: 1200, spawn: { x: 0, y: 0 }, rules: { friendlyFire: false, keepInventoryOnDeath: true, hungerEnabled: true, thirstEnabled: true, mobSpawning: true } });
@@ -81,13 +100,14 @@ function ensureChunks(w: World): void {
 
 function spawnEnemies(w: World): void {
   enemies = [];
+  creatures = [];
   const size = w.settings.chunkSize;
-  for (let i = 0; i < 6; i++) {
-    const biome = BIOMES[Object.keys(BIOMES)[i % Object.keys(BIOMES).length]!]!;
-    const eid = biome.enemies[0] ?? "slime";
-    const x = Math.floor(player.x / size) * size + rng.int(-12, 12);
-    const y = Math.floor(player.y / size) * size + rng.int(-12, 12);
-    enemies.push(new Enemy(eid, { x, y }));
+  for (let i = 0; i < 8; i++) {
+    const eid = ENEMY_IDS[i % ENEMY_IDS.length]!;
+    const x = Math.floor(player.x / size) * size + rng.int(-16, 16);
+    const y = Math.floor(player.y / size) * size + rng.int(-16, 16);
+    const c = new Creature(eid, { x, y });
+    creatures.push(c);
   }
 }
 
@@ -104,20 +124,24 @@ function draw(): void {
     for (let tx = camCX - w; tx <= camCX + w; tx++) {
       const block = world.blockAt(tx, ty);
       if (block === "air") continue;
-      const color = colorFor(block);
       const sx = (tx - camCX) * TILE + canvas.width / 2;
       const sy = (ty - camCY) * TILE + canvas.height / 2;
-      ctx.fillStyle = color;
-      ctx.fillRect(Math.round(sx), Math.round(sy), TILE, TILE);
-      if (block === "water") {
-        ctx.fillStyle = "rgba(255,255,255,0.12)";
-        ctx.fillRect(Math.round(sx), Math.round(sy + TILE - 4), TILE, 4);
+      // draw from sprite atlas when available, else solid color
+      const idx = atlasTiles[block];
+      if (atlas && idx !== undefined) {
+        const col = idx % 8;
+        const row = Math.floor(idx / 8);
+        ctx.drawImage(atlas, col * ATLAS_TILE, row * ATLAS_TILE, ATLAS_TILE, ATLAS_TILE,
+          Math.round(sx), Math.round(sy), TILE, TILE);
+      } else {
+        ctx.fillStyle = colorForFallback(block);
+        ctx.fillRect(Math.round(sx), Math.round(sy), TILE, TILE);
       }
     }
   }
 
-  // enemies
-  for (const e of enemies) {
+  // creatures (AI)
+  for (const e of creatures) {
     const sx = (e.pos.x - camCX) * TILE + canvas.width / 2;
     const sy = (e.pos.y - camCY) * TILE + canvas.height / 2;
     ctx.fillStyle = "#e0f0ff";
@@ -145,7 +169,7 @@ function draw(): void {
   ctx.strokeRect((mx - camCX) * TILE + canvas.width / 2, (my - camCY) * TILE + canvas.height / 2, TILE, TILE);
 }
 
-function colorFor(block: string): string {
+function colorForFallback(block: string): string {
   switch (block) {
     case "grass": return "#7cb342";
     case "dirt": return "#795548";
@@ -263,26 +287,29 @@ function update(dt: number): void {
   const surv = applySurvivalTick(stats, dt);
   if (surv.drained) setMsg("⚠️ ความหิว/กระหายหมด — HP ลด!");
 
-  // enemies aggression + damage
-  for (const e of enemies) {
-    e.updateAggro({ x: player.x, y: player.y });
-    if (e.aggro) {
-      e.moveToward({ x: player.x, y: player.y }, dt);
-      if (Math.hypot(e.pos.x - player.x, e.pos.y - player.y) < 1.2) {
-        stats.hp = Math.max(0, stats.hp - e.damage * dt);
-      }
+  // day/night + weather
+  tickDayNight(dn, dt);
+  const biomeStats = { humidity: 0.5, temperature: 0.6 };
+  tickWeather(weather, dt, biomeStats, () => rng.next());
+
+  // creature AI + combat
+  for (const c of creatures) {
+    const r = c.step({ x: player.x, y: player.y }, dt, (x, y) => world.blockAt(x, y) !== "stone" && world.blockAt(x, y) !== "wall", () => rng.next());
+    if (r.wantsAttack && Math.hypot(c.pos.x - player.x, c.pos.y - player.y) < c.attackRange + 0.5) {
+      stats.hp = Math.max(0, stats.hp - c.damage);
+      if (stats.hp <= 0) setMsg("💀 คุณตาย! ลองใหม่");
     }
   }
-  enemies = enemies.filter((e) => e.isAlive());
+  creatures = creatures.filter((c) => c.isAlive());
 
-  // day/night tint
   gameTime += dt;
 }
 
 // --- HUD ---
 function el(id: string): HTMLElement { return document.getElementById(id)!; }
 function updateHUD(): void {
-  el("hud-pos").textContent = `${Math.floor(player.x)},${Math.floor(player.y)}`;
+  el("hud-pos").textContent = `${Math.floor(player.x)},${Math.floor(player.y)} · ${phaseLabel(dn.phase)} ${Math.round(dn.light * 100)}%`;
+  el("hud-pos").textContent += ` · ${weatherLabel(weather.kind)}`;
   el("hud-level").textContent = `Lv ${stats.level}`;
   el("hud-xp").textContent = `${Math.round(stats.xp)} XP`;
   el("bar-hp").style.width = `${(stats.hp / stats.maxHp) * 100}%`;
