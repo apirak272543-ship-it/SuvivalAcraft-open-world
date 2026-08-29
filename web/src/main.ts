@@ -178,6 +178,7 @@ function startGame(p: PlayerState, seed: number, t: number): void {
   lastTs = performance.now();
   renderCraft();
   renderQuests();
+  lockLandscape();
 }
 
 function beginNewGame(): void {
@@ -600,7 +601,28 @@ function updateContinueBtn(): void {
   $("btn-continue").style.display = hasSave() ? "" : "none";
 }
 
+
+function lockLandscape(): void {
+  try {
+    const anyScr = screen as unknown as { orientation?: { lock?: (o: string) => Promise<void> } };
+    const anyDoc = document as unknown as { webkitFullscreenElement?: Element; msFullscreenElement?: Element };
+    const anyEl = document.documentElement as unknown as { webkitRequestFullscreen?: () => Promise<void> | void; msRequestFullscreen?: () => void };
+    const fullscreen = document.fullscreenElement || anyDoc.webkitFullscreenElement || anyDoc.msFullscreenElement;
+    // Request fullscreen (needed by some browsers before orientation lock)
+    const fsReq = (document.documentElement as unknown as { requestFullscreen?: () => Promise<void> }).requestFullscreen ||
+      anyEl.webkitRequestFullscreen || anyEl.msRequestFullscreen;
+    if (fsReq && !fullscreen) {
+      try { Promise.resolve(fsReq.call(document.documentElement)).catch(() => {}); } catch { /* ignore */ }
+    }
+    // Lock orientation to landscape
+    if (anyScr.orientation && typeof anyScr.orientation.lock === "function") {
+      anyScr.orientation.lock("landscape").catch(() => {});
+    }
+  } catch { /* orientation lock may be unsupported (desktop / iOS Safari) */ }
+}
+
 function init(): void {
+  lockLandscape();
   buildDynamicUI();
 
   setupControls();
