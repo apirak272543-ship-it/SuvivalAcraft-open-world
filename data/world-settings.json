@@ -1,0 +1,21 @@
+{
+  "worldName": "โลกลิขิต",
+  "seed": 1337,
+  "chunkSize": 16,
+  "radiusChunks": 3,
+  "dayLengthSeconds": 1200,
+  "survival": {
+    "hungerPerSecond": 0.08,
+    "thirstPerSecond": 0.06,
+    "regenHungerThreshold": 0.75,
+    "regenPerSecond": 0.5,
+    "starvationDamagePerSecond": 1
+  },
+  "rules": {
+    "friendlyFire": false,
+    "keepInventoryOnDeath": true,
+    "hungerEnabled": true,
+    "thirstEnabled": true,
+    "mobSpawning": true
+  }
+}

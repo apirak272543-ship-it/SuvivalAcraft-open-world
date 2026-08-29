@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.log
+.env
+.env.*
+game/saves/*
+!game/saves/.gitkeep
+studio/exports/*
+!studio/exports/.gitkeep

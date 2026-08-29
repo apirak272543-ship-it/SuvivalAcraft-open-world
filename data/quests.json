@@ -1,0 +1,5 @@
+{
+  "gather_wood": { "id": "gather_wood", "name": "เก็บไม้เริ่มต้น", "description": "เก็บไม้ 5 อัน", "objective": { "type": "gather", "target": "wood", "count": 5 }, "reward": { "xp": 10, "items": [{ "item": "apple", "count": 2 }] } },
+  "craft_pickaxe": { "id": "craft_pickaxe", "name": "ประดิษฐ์จอบ", "description": "ประดิษฐ์จอบไม้ 1 อัน", "objective": { "type": "craft", "target": "wood_pickaxe", "count": 1 }, "reward": { "xp": 20 } },
+  "slay_slime": { "id": "slay_slime", "name": "ล่าสไลม์", "description": "กำจัดสไลม์ 3 ตัว", "objective": { "type": "kill", "target": "slime", "count": 3 }, "reward": { "xp": 30, "items": [{ "item": "wheat_seed", "count": 2 }] } }
+}

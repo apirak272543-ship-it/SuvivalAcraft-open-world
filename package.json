@@ -1,0 +1,24 @@
+{
+  "name": "suvivalacraft-open-world",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Open-world survival crafting game: data-driven world, survival/core systems, studio tools.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "world:generate": "tsx tools/generate-world.ts",
+    "content:validate": "tsx tools/validate-content.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.0",
+    "tsx": "^4.19.1",
+    "typescript": "5.9.3",
+    "vitest": "^2.1.4"
+  },
+  "dependencies": {
+    "zod": "^4.1.12"
+  }
+}

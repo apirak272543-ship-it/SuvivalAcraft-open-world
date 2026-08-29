@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "tiles": {
+    "grass": "blocks/grass.svg",
+    "dirt": "blocks/dirt.svg",
+    "stone": "blocks/stone.svg",
+    "water": "blocks/water.svg",
+    "wood_log": "blocks/wood_log.svg"
+  },
+  "items": {
+    "wood": "items/wood.svg",
+    "apple": "items/apple.svg"
+  }
+}

@@ -1,0 +1,31 @@
+import type { BlockDef } from "../types/content.js";
+
+export const BLOCKS: Record<string, BlockDef> = {
+  air: { id: "air", name: "อากาศ", hardness: 0, solid: false, transparent: true },
+  grass: {
+    id: "grass", name: "หญ้า", hardness: 0.6, solid: true, soil: true, flammable: true,
+    drops: [{ item: "dirt", min: 1, max: 1 }],
+  },
+  dirt: { id: "dirt", name: "ดิน", hardness: 0.6, solid: true, soil: true, drops: [{ item: "dirt", min: 1, max: 1 }] },
+  sand: { id: "sand", name: "ทราย", hardness: 0.6, solid: true, soil: true, drops: [{ item: "sand", min: 1, max: 1 }] },
+  stone: { id: "stone", name: "หิน", hardness: 1.5, solid: true, tool: { type: "pickaxe", level: 1 }, drops: [{ item: "stone", min: 1, max: 1 }] },
+  cobblestone: { id: "cobblestone", name: "กรวด", hardness: 2, solid: true, tool: { type: "pickaxe", level: 1 }, drops: [{ item: "cobblestone", min: 1, max: 1 }] },
+  iron_ore: {
+    id: "iron_ore", name: "แร่เหล็ก", hardness: 3, solid: true, tool: { type: "pickaxe", level: 2 },
+    drops: [{ item: "iron_ore", min: 1, max: 3 }],
+  },
+  coal_ore: {
+    id: "coal_ore", name: "ถ่านหิน", hardness: 3, solid: true, tool: { type: "pickaxe", level: 1 },
+    drops: [{ item: "coal", min: 1, max: 2 }],
+  },
+  wood_log: { id: "wood_log", name: "ต้นไม้", hardness: 2, solid: true, flammable: true, tool: { type: "axe", level: 1 }, drops: [{ item: "wood", min: 1, max: 2 }] },
+  wood_planks: { id: "wood_planks", name: "ไม้กระดาน", hardness: 2, solid: true, flammable: true, drops: [{ item: "wood_planks", min: 1, max: 1 }] },
+  leaves: { id: "leaves", name: "ใบไม้", hardness: 0.2, solid: true, transparent: true, flammable: true, drops: [{ item: "leaves", min: 0, max: 1 }] },
+  glass: { id: "glass", name: "กระจก", hardness: 0.3, solid: true, transparent: true },
+  water: { id: "water", name: "น้ำ", hardness: 0, solid: false, transparent: true },
+  torch: { id: "torch", name: "คบเพลิง", hardness: 0.1, solid: false, transparent: true },
+  wheat_crop_0: { id: "wheat_crop_0", name: "ต้นข้าว(งอก)", hardness: 0.2, solid: false, transparent: true },
+  wheat_crop_1: { id: "wheat_crop_1", name: "ต้นข้าว(โต)", hardness: 0.2, solid: false, transparent: true },
+  wheat_crop_2: { id: "wheat_crop_2", name: "ต้นข้าว(พร้อมเก็บ)", hardness: 0.2, solid: false, transparent: true, drops: [{ item: "wheat", min: 1, max: 2 }] },
+  cobblestone_block: { id: "cobblestone_block", name: "บล็อกกรวด", hardness: 2, solid: true, drops: [{ item: "cobblestone_block", min: 1, max: 1 }] },
+};

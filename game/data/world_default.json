@@ -1,0 +1,7 @@
+{
+  "worldName": "โลกลิขิต",
+  "seed": 1337,
+  "chunkSize": 16,
+  "radiusChunks": 3,
+  "dayLengthSeconds": 1200
+}

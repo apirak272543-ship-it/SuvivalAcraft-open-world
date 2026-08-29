@@ -1,0 +1,38 @@
+import type { BiomeDef } from "../types/content.js";
+
+export const BIOMES: Record<string, BiomeDef> = {
+  plain: {
+    id: "plain", name: "ที่ราบ", temperature: 0.6, humidity: 0.5,
+    surface: "grass", subSoil: "dirt", treeDensity: 0.06, oreTier: 1,
+    enemies: ["slime", "wolf"],
+  },
+  forest: {
+    id: "forest", name: "ป่าไม้", temperature: 0.5, humidity: 0.7,
+    surface: "grass", subSoil: "dirt", treeDensity: 0.35, oreTier: 1,
+    enemies: ["wolf", "spider"],
+  },
+  desert: {
+    id: "desert", name: "ทะเลทราย", temperature: 0.9, humidity: 0.1,
+    surface: "sand", subSoil: "sand", treeDensity: 0, oreTier: 1,
+    enemies: ["scorpion"],
+  },
+  mountains: {
+    id: "mountains", name: "ภูเขา", temperature: 0.2, humidity: 0.3,
+    surface: "stone", subSoil: "stone", treeDensity: 0.02, oreTier: 3,
+    enemies: ["golem"],
+  },
+  swamp: {
+    id: "swamp", name: "หนองน้ำ", temperature: 0.6, humidity: 0.9,
+    surface: "grass", subSoil: "dirt", treeDensity: 0.15, oreTier: 1,
+    enemies: ["slime", "spider"],
+  },
+};
+
+export function biomeAt(seed: number, cx: number, cz: number): BiomeDef {
+  const n = Math.abs(Math.sin(cx * 12.9898 + cz * 78.233 + seed) * 43758.5453) % 1;
+  if (n < 0.15) return BIOMES["mountains"]!;
+  if (n < 0.35) return BIOMES["desert"]!;
+  if (n < 0.55) return BIOMES["forest"]!;
+  if (n < 0.7) return BIOMES["swamp"]!;
+  return BIOMES["plain"]!;
+}

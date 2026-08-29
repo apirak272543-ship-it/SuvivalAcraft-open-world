@@ -1,0 +1,12 @@
+import type { NpcDef } from "../types/content.js";
+
+export const NPC: Record<string, NpcDef> = {
+  trader: {
+    id: "trader",
+    name: "พ่อค้า",
+    trades: [
+      { receive: { item: "wood", count: 8 }, give: { item: "bread", count: 1 } },
+      { receive: { item: "iron_ingot", count: 2 }, give: { item: "torch", count: 8 } },
+    ],
+  },
+};

@@ -1,0 +1,9 @@
+{
+  "id": "house_basic",
+  "name": "บ้านไม้พื้นฐาน",
+  "size": { "w": 7, "h": 7 },
+  "layers": [
+    { "name": "พื้น", "rows": ["XXXXXXX","X.....X","X.....X","X.....X","X.....X","X.....X","XXXXXXX"] },
+    { "name": "ผนัง", "rows": ["XXXXXXX","X..D..X","X.....X","X.....X","X.....X","X.....X","XXXXXXX"] }
+  ]
+}

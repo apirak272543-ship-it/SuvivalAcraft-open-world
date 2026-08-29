@@ -1,0 +1,7 @@
+{
+  "slime": { "id": "slime", "name": "สไลม์", "maxHp": 15, "damage": 3, "armor": 0, "speed": 2, "xp": 5, "aggroRange": 6, "habitat": ["plain", "swamp"], "drops": [{ "item": "raw_meat", "min": 0, "max": 1 }] },
+  "wolf": { "id": "wolf", "name": "หมาป่า", "maxHp": 25, "damage": 5, "armor": 0, "speed": 4, "xp": 8, "aggroRange": 10, "habitat": ["plain", "forest"], "drops": [{ "item": "raw_meat", "min": 1, "max": 2 }] },
+  "spider": { "id": "spider", "name": "แมงมุม", "maxHp": 18, "damage": 4, "armor": 0, "speed": 3, "xp": 8, "aggroRange": 8, "habitat": ["forest", "swamp"], "drops": [{ "item": "fiber", "min": 1, "max": 2 }] },
+  "scorpion": { "id": "scorpion", "name": "แมงป่อง", "maxHp": 20, "damage": 6, "armor": 0, "speed": 3, "xp": 10, "aggroRange": 8, "habitat": ["desert"], "drops": [{ "item": "raw_meat", "min": 1, "max": 1 }] },
+  "golem": { "id": "golem", "name": "โกเล็ม", "maxHp": 60, "damage": 10, "armor": 4, "speed": 1.5, "xp": 25, "aggroRange": 12, "habitat": ["mountains"], "drops": [{ "item": "iron_ingot", "min": 1, "max": 3 }] }
+}

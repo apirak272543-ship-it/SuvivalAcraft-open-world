@@ -1,0 +1,292 @@
+{
+  "apple": {
+    "id": "apple",
+    "name": "แอปเปิล",
+    "category": "food",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "food"
+    ],
+    "food": {
+      "hunger": 6
+    }
+  },
+  "bread": {
+    "id": "bread",
+    "name": "ขนมปัง",
+    "category": "food",
+    "stackLimit": 64,
+    "tier": 2,
+    "tags": [
+      "food"
+    ],
+    "food": {
+      "hunger": 8
+    }
+  },
+  "coal": {
+    "id": "coal",
+    "name": "ถ่านหิน",
+    "category": "material",
+    "stackLimit": 64,
+    "tier": 2,
+    "tags": [
+      "fuel",
+      "material"
+    ]
+  },
+  "cobblestone": {
+    "id": "cobblestone",
+    "name": "กรวด",
+    "category": "material",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "stone",
+      "material"
+    ]
+  },
+  "cobblestone_block": {
+    "id": "cobblestone_block",
+    "name": "บล็อกกรวด",
+    "category": "structure",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "stone"
+    ]
+  },
+  "cooked_meat": {
+    "id": "cooked_meat",
+    "name": "เนื้อสุก",
+    "category": "food",
+    "stackLimit": 64,
+    "tier": 2,
+    "tags": [
+      "food"
+    ],
+    "food": {
+      "hunger": 10
+    }
+  },
+  "dirt": {
+    "id": "dirt",
+    "name": "ดิน",
+    "category": "material",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "material"
+    ]
+  },
+  "fiber": {
+    "id": "fiber",
+    "name": "เส้นใย",
+    "category": "material",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "fiber",
+      "material"
+    ]
+  },
+  "iron_ingot": {
+    "id": "iron_ingot",
+    "name": "เหล็กแท่ง",
+    "category": "material",
+    "stackLimit": 64,
+    "tier": 3,
+    "tags": [
+      "metal",
+      "material"
+    ]
+  },
+  "iron_ore": {
+    "id": "iron_ore",
+    "name": "แร่เหล็ก",
+    "category": "material",
+    "stackLimit": 64,
+    "tier": 2,
+    "tags": [
+      "ore",
+      "material"
+    ]
+  },
+  "iron_pickaxe": {
+    "id": "iron_pickaxe",
+    "name": "จอบเหล็ก",
+    "category": "tool",
+    "stackLimit": 1,
+    "tier": 3,
+    "tags": [
+      "pickaxe"
+    ],
+    "durability": 250
+  },
+  "iron_sword": {
+    "id": "iron_sword",
+    "name": "ดาบเหล็ก",
+    "category": "weapon",
+    "stackLimit": 1,
+    "tier": 3,
+    "tags": [
+      "sword",
+      "melee"
+    ],
+    "durability": 250
+  },
+  "leaves": {
+    "id": "leaves",
+    "name": "ใบไม้",
+    "category": "material",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "material"
+    ]
+  },
+  "raw_meat": {
+    "id": "raw_meat",
+    "name": "เนื้อดิบ",
+    "category": "food",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "food"
+    ],
+    "food": {
+      "hunger": 5
+    }
+  },
+  "sand": {
+    "id": "sand",
+    "name": "ทราย",
+    "category": "material",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "material"
+    ]
+  },
+  "stick": {
+    "id": "stick",
+    "name": "ไม้ท่อน",
+    "category": "material",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "wood",
+      "material"
+    ]
+  },
+  "stone": {
+    "id": "stone",
+    "name": "หิน",
+    "category": "material",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "stone",
+      "material"
+    ]
+  },
+  "stone_pickaxe": {
+    "id": "stone_pickaxe",
+    "name": "จอบหิน",
+    "category": "tool",
+    "stackLimit": 1,
+    "tier": 2,
+    "tags": [
+      "pickaxe"
+    ],
+    "durability": 130
+  },
+  "stone_sword": {
+    "id": "stone_sword",
+    "name": "ดาบหิน",
+    "category": "weapon",
+    "stackLimit": 1,
+    "tier": 2,
+    "tags": [
+      "sword",
+      "melee"
+    ],
+    "durability": 130
+  },
+  "torch": {
+    "id": "torch",
+    "name": "คบเพลิง",
+    "category": "misc",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "light"
+    ]
+  },
+  "wheat": {
+    "id": "wheat",
+    "name": "ข้าวสาลี",
+    "category": "material",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "crop"
+    ]
+  },
+  "wheat_seed": {
+    "id": "wheat_seed",
+    "name": "เมล็ดข้าวสาลี",
+    "category": "seed",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "seed"
+    ]
+  },
+  "wood": {
+    "id": "wood",
+    "name": "ไม้",
+    "category": "material",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "wood",
+      "fuel",
+      "material"
+    ]
+  },
+  "wood_pickaxe": {
+    "id": "wood_pickaxe",
+    "name": "จอบไม้",
+    "category": "tool",
+    "stackLimit": 1,
+    "tier": 1,
+    "tags": [
+      "pickaxe"
+    ],
+    "durability": 60
+  },
+  "wood_planks": {
+    "id": "wood_planks",
+    "name": "ไม้กระดาน",
+    "category": "structure",
+    "stackLimit": 64,
+    "tier": 1,
+    "tags": [
+      "wood"
+    ]
+  },
+  "wood_sword": {
+    "id": "wood_sword",
+    "name": "ดาบไม้",
+    "category": "weapon",
+    "stackLimit": 1,
+    "tier": 1,
+    "tags": [
+      "sword",
+      "melee"
+    ],
+    "durability": 60
+  }
+}
