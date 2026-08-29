@@ -7,3 +7,4 @@ game/saves/*
 !game/saves/.gitkeep
 studio/exports/*
 !studio/exports/.gitkeep
+dist-web/

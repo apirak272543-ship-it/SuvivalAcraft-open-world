@@ -1,7 +1,7 @@
 # STATUS — SuvivalAcraft Open World
 
 ไฟล์เช็คสถานะการทำงานกลาง (source of truth) สำหรับ AI และผู้พัฒนา
-อัปเดตครั้งล่าสุด: 2026-08-29 (UTC)
+อัปเดตครั้งล่าสุด: 2026-08-29 (UTC) — รอบ 2 เพิ่ม web build
 
 > กติกา: อ่านไฟล์นี้ก่อนเริ่มงานทุกครั้ง / อัปเดตหลังงานทุกครั้ง
 > เพิ่มงานใหม่ได้ตลอดที่หัวข้อ "เพิ่มงาน / คำสั่งใหม่" — ใส่ timestamp, ผู้เสนอ, และสถานะ
@@ -17,14 +17,14 @@
 | G3 | Test suite ครอบคลุมทุกระบบหลัก และผ่าน 100% | ✅ เสร็จ (47/47) |
 | G4 | อัปโหลดขึ้น GitHub repo `SuvivalAcraft-open-world` และซิงค์ commit | ✅ เสร็จ (5603531) |
 | G5 | สร้างสถานะ/checkpoint ไฟล์สำหรับการต่องานหลาย AI | ✅ เสร็จ (ไฟล์นี้) |
-| G6 | Web build (UI/เล่นผ่านเบราว์เซอร์) | ⏳ ยังไม่เริ่ม |
-| G7 | เพิ่มระบบ save/load จริงลงไฟล์ + หน้า UI เลือกโลก | ⏳ ยังไม่เริ่ม |
+| G6 | Web build (HTML/canvas เล่นได้บนเบราว์เซอร์) | ✅ เสร็จ (deploy GitHub Pages) |
+| G7 | เพิ่มระบบ save/load จริง + หน้า UI เลือกโลก | ⏳ ยังไม่เริ่ม (มี web แบบ single-session) |
 | G8 | Multiplayer (LAN/local-first เสมือน A_Survival) | ⏳ ยังไม่เริ่ม |
 
 ## 2. สถานะล่าสุด (Checkpoint)
 
 - **Branch**: `main`
-- **Commit ล่าสุด (local == remote)**: `5603531` — `feat: initial survival open-world crafting game`
+- **Commit ล่าสุด (local == remote)**: ดูจาก `git log --oneline -1` (web build ใน commit ถัดไป)
 - **Working tree**: สะอาด (ไม่มีงานค้าง)
 - **ผลตรวจล่าสุด**:
   - `npm run check` → PASS
@@ -76,3 +76,10 @@
 
 - [ ] 2026-08-29 — (ตัวอย่าง) ทำ inventory sorting ปุ่มจัดเรียง
 - [ ] 2026-08-29 — (ตัวอย่าง) เพิ่ม quest type "explore" ให้เปิดแผนที่ครบ N จุด
+
+## 8. Web build (เพิ่มรอบ 2)
+
+- สร้าง `web/` — เกม HTML/canvas เล่นได้จริงจาก game core
+- ใช้ WASD เดิน, คลิกวาง/ขุดบล็อก, คราฟต์ปุ่ม C, HUD แสดง HP/ความหิว/กระหาย, hotbar
+- Deploy: GitHub Actions `.github/workflows/pages.yml` → GitHub Pages
+- เปิดเล่นได้ที่: `https://apirak272543-ship-it.github.io/SuvivalAcraft-open-world/`
